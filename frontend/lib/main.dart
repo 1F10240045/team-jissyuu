@@ -4,6 +4,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'theme/app_theme.dart';
+import 'widgets/custom_button.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -36,10 +39,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'LINE Mini App Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.lightTheme, // ← ThemeData(...) の部分をこれに置き換えます
       home: const HomeScreen(),
     );
   }

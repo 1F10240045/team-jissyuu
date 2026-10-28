@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'screens/home_screen.dart';
 import 'theme/app_theme.dart';
 import 'models/team.dart';
 import 'constants/dummy_data.dart';
@@ -13,7 +14,7 @@ import 'screens/team_detail_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Firebase の初期化（Web/ローカル開発用のダミー設定）
   await Firebase.initializeApp(
     options: const FirebaseOptions(
@@ -28,7 +29,7 @@ void main() async {
   if (kDebugMode) {
     // Auth エミュレータへの接続 (localhost:9099)
     await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
-    
+
     // Firestore エミュレータへの接続 (localhost:8080)
     FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
   }
@@ -42,13 +43,16 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'LINE Mini App Demo',
-      theme: AppTheme.lightTheme, // ← ThemeData(...) の部分をこれに置き換えます
-      home: const TeamMainNavigation(),
+      debugShowCheckedModeBanner: false,
+      title: 'チーム実習アプリ',
+      theme: AppTheme.lightTheme,
+      // アプリの起動画面として HomeScreen を指定
+      home: const HomeScreen(),
     );
   }
 }
 
+// チーム機能画面のナビゲーション管理クラス（HomeScreen等から呼び出して使用可能）
 class TeamMainNavigation extends StatefulWidget {
   const TeamMainNavigation({super.key});
 

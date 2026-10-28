@@ -5,7 +5,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'theme/app_theme.dart';
-import 'widgets/custom_button.dart';
+import 'models/team.dart';
+import 'constants/dummy_data.dart';
+import 'screens/team_list_screen.dart';
+import 'screens/create_team_screen.dart';
+import 'screens/team_detail_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,45 +44,64 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'LINE Mini App Demo',
       theme: AppTheme.lightTheme, // ← ThemeData(...) の部分をこれに置き換えます
-      home: const HomeScreen(),
+      home: const TeamMainNavigation(),
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+class TeamMainNavigation extends StatefulWidget {
+  const TeamMainNavigation({super.key});
+
+  @override
+  State<TeamMainNavigation> createState() => _TeamMainNavigationState();
+}
+
+class _TeamMainNavigationState extends State<TeamMainNavigation> {
+  final List<Team> _teams = List.from(initialTeams);
+
+  void _addTeam(String name, String district, String description) {
+    final newTeam = Team(
+      teamId: 'team_${DateTime.now().millisecondsSinceEpoch}',
+      name: name,
+      district: district,
+      description: description,
+      managerUserId: dummyUserId,
+      memberCount: 1,
+      totalSteps: 0,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    setState(() {
+      _teams.insert(0, newTeam);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('LINE Mini App - Home'),
-      ),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () async {
-            // テスト用：Firestore にデータを書き込んでみる
-            try {
-              await FirebaseFirestore.instance.collection('test').add({
-                'message': 'Hello Firebase Emulator!',
-                'createdAt': FieldValue.serverTimestamp(),
-              });
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('エミュレータにデータを送信しました！')),
-                );
-              }
-            } catch (e) {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('エラーが発生しました: $e')),
-                );
-              }
-            }
-          },
-          child: const Text('エミュレータにテストデータを送信'),
-        ),
-      ),
+    return TeamListScreen(
+      teams: _teams,
+      onSelectTeam: (team) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => TeamDetailScreen(
+              team: team,
+              currentUserId: dummyUserId,
+            ),
+          ),
+        );
+      },
+      onCreateNew: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => CreateTeamScreen(
+              onSubmit: (name, district, description) {
+                _addTeam(name, district, description);
+                Navigator.of(context).pop();
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }

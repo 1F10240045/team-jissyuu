@@ -1,4 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart'; // ※ package: にしてください（0が入らないようご注意）
+
+import 'exercise_screen.dart';
+import 'record_screen.dart';
+import 'ranking_screen.dart';
+import 'friend_screen.dart';
+import 'profile_screen.dart'; // プロフィール画面をインポート
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -15,24 +21,30 @@ class HomeScreen extends StatelessWidget {
               // 1. プロフボタン（左上）
               Align(
                 alignment: Alignment.centerLeft,
-                child: Column(
-                  children: [
-                    IconButton(
-                      iconSize: 48,
-                      icon: const Icon(Icons.account_circle, color: Colors.grey),
-                      onPressed: () {},
-                    ),
-                    const Text(
-                      'プロフ',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ],
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ProfileScreen(),
+                      ),
+                    );
+                  },
+                  child: const Column(
+                    children: [
+                      Icon(Icons.account_circle, size: 48, color: Colors.grey),
+                      Text(
+                        'プロフ',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
               const SizedBox(height: 20),
 
-              // 2. 中央の表彰台エリア（1, 2, 3位）
+              // 2. 中央の表彰台エリア
               Expanded(
                 child: Container(
                   width: double.infinity,
@@ -67,10 +79,58 @@ class HomeScreen extends StatelessWidget {
                 mainAxisSpacing: 16,
                 childAspectRatio: 2.2,
                 children: [
-                  _buildMenuButton(context, label: '運動', icon: Icons.directions_run),
-                  _buildMenuButton(context, label: '記録', icon: Icons.edit_note),
-                  _buildMenuButton(context, label: 'ランキング', icon: Icons.emoji_events),
-                  _buildMenuButton(context, label: 'フレンド', icon: Icons.people),
+                  _buildMenuButton(
+                    context,
+                    label: '運動',
+                    icon: Icons.directions_run,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ExerciseScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildMenuButton(
+                    context,
+                    label: '記録',
+                    icon: Icons.edit_note,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const RecordScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildMenuButton(
+                    context,
+                    label: 'ランキング',
+                    icon: Icons.emoji_events,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const RankingScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildMenuButton(
+                    context,
+                    label: 'フレンド',
+                    icon: Icons.people,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const FriendScreen(),
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
               const SizedBox(height: 20),
@@ -95,7 +155,10 @@ class HomeScreen extends StatelessWidget {
           child: Center(
             child: Text(
               '($rank)',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
@@ -103,19 +166,29 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuButton(BuildContext context, {required String label, required IconData icon}) {
+  Widget _buildMenuButton(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
       ),
-      onPressed: () {},
+      onPressed: onTap,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          Text(label, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           Icon(icon, size: 28),
         ],
       ),

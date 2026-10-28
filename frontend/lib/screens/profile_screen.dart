@@ -1,0 +1,20 @@
+import 'package:flutter/material.dart';
+
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('プロフィール'),
+      ),
+      body: const Center(
+        child: Text(
+          'プロフィール画面（準備中）',
+          style: TextStyle(fontSize: 18),
+        ),
+      ),
+    );
+  }
+}

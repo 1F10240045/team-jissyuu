@@ -2,10 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package0:cloud_firestore/cloud_firestore.dart';
 
+import 'screens/home_screen.dart'; // 作成したHomeScreenをインポート
 import 'theme/app_theme.dart';
-import 'widgets/custom_button.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,47 +38,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'LINE Mini App Demo',
-      theme: AppTheme.lightTheme, // ← ThemeData(...) の部分をこれに置き換えます
+      debugShowCheckedModeBanner: false,
+      title: 'チーム実習アプリ',
+      theme: AppTheme.lightTheme,
+      // 初期画面に HomeScreen を指定
       home: const HomeScreen(),
-    );
-  }
-}
-
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('LINE Mini App - Home'),
-      ),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () async {
-            // テスト用：Firestore にデータを書き込んでみる
-            try {
-              await FirebaseFirestore.instance.collection('test').add({
-                'message': 'Hello Firebase Emulator!',
-                'createdAt': FieldValue.serverTimestamp(),
-              });
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('エミュレータにデータを送信しました！')),
-                );
-              }
-            } catch (e) {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('エラーが発生しました: $e')),
-                );
-              }
-            }
-          },
-          child: const Text('エミュレータにテストデータを送信'),
-        ),
-      ),
     );
   }
 }

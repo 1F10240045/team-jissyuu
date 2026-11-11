@@ -48,4 +48,32 @@ class Team {
     required this.createdAt,
     required this.updatedAt,
   });
+
+  factory Team.fromMap(Map<String, dynamic> map) {
+    return Team(
+      teamId: map['teamId'] ?? '',
+      name: map['name'] ?? '',
+      district: map['district'] ?? '',
+      description: map['description'] ?? '',
+      managerUserId: map['managerUserId'] ?? '',
+      memberCount: (map['memberCount'] ?? 0) as int,
+      totalSteps: (map['totalSteps'] ?? 0) as int,
+      createdAt: (map['createdAt'] as DateTime?) ?? DateTime.now(),
+      updatedAt: (map['updatedAt'] as DateTime?) ?? DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'teamId': teamId,
+      'name': name,
+      'district': district,
+      'description': description,
+      'managerUserId': managerUserId,
+      'memberCount': memberCount,
+      'totalSteps': totalSteps,
+      'createdAt': createdAt,
+      'updatedAt': updatedAt,
+    };
+  }
 }

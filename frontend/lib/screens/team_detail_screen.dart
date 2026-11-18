@@ -1,5 +1,6 @@
 // lib/screens/team_detail_screen.dart
 import 'package:flutter/material.dart';
+
 import '../models/team.dart';
 
 class TeamDetailScreen extends StatelessWidget {
@@ -17,9 +18,7 @@ class TeamDetailScreen extends StatelessWidget {
     final isManager = team.managerUserId == currentUserId;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('チーム詳細'),
-      ),
+      appBar: AppBar(title: const Text('チーム詳細')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Card(
@@ -34,19 +33,34 @@ class TeamDetailScreen extends StatelessWidget {
                   children: [
                     Text(
                       team.name,
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     if (isManager)
                       const Chip(
-                        label: Text('管理者', style: TextStyle(color: Colors.white, fontSize: 12)),
+                        label: Text(
+                          '管理者',
+                          style: TextStyle(color: Colors.white, fontSize: 12),
+                        ),
                         backgroundColor: Colors.blue,
                       ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text('地域: ${team.district}', style: TextStyle(color: Colors.grey[600])),
+                Text(
+                  '地域: ${team.district}',
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
                 const Divider(height: 24),
-                const Text('説明', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                const Text(
+                  '説明',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Text(team.description),
                 const Divider(height: 24),
@@ -56,8 +70,17 @@ class TeamDetailScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('メンバー数', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                          Text('${team.memberCount} 名', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          const Text(
+                            'メンバー数',
+                            style: TextStyle(color: Colors.grey, fontSize: 12),
+                          ),
+                          Text(
+                            '${team.memberCount} 名',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -65,8 +88,18 @@ class TeamDetailScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('チーム合計歩数', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                          Text('${team.totalSteps} 歩', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green)),
+                          const Text(
+                            'チーム合計歩数',
+                            style: TextStyle(color: Colors.grey, fontSize: 12),
+                          ),
+                          Text(
+                            '${team.totalSteps} 歩',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
                         ],
                       ),
                     ),

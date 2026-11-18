@@ -97,11 +97,8 @@ class WalkLogService {
       'district': userDistrict,
       'ageGroup': dummyUserProfile.ageGroup,
       'teamId': dummyUserProfile.teamId,
+      'targetSteps': 8000,
       'todaySteps': steps,
-      'totalSteps': dummyUserProfile.totalSteps + steps,
-      'totalDistanceKm': double.parse(
-        (dummyUserProfile.totalDistanceKm + distanceKm).toStringAsFixed(2),
-      ),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 

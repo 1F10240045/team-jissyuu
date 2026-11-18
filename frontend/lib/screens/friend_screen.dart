@@ -10,24 +10,9 @@ class FriendScreen extends StatefulWidget {
 class _FriendScreenState extends State<FriendScreen> {
   // 型指定をシンプルにして構文エラーを完全に防止
   final friendsList = [
-    {
-      'id': 'user_001',
-      'name': 'すずき はなこ',
-      'steps': 7400,
-      'isOnline': true,
-    },
-    {
-      'id': 'user_002',
-      'name': 'たなか さとる',
-      'steps': 8200,
-      'isOnline': false,
-    },
-    {
-      'id': 'user_003',
-      'name': 'やまだ いちろう',
-      'steps': 4900,
-      'isOnline': true,
-    },
+    {'id': 'user_001', 'name': 'すずき はなこ', 'steps': 7400, 'isOnline': true},
+    {'id': 'user_002', 'name': 'たなか さとる', 'steps': 8200, 'isOnline': false},
+    {'id': 'user_003', 'name': 'やまだ いちろう', 'steps': 4900, 'isOnline': true},
   ];
 
   void _showAddFriendDialog() {

@@ -5,15 +5,16 @@ const String dummyUserId = "dummy_user_id";
 
 final UserProfile dummyUserProfile = UserProfile(
   userId: dummyUserId,
-  displayName: "テストユーザー",
-  avatarUrl: "https://via.placeholder.com/150",
-  district: "渋谷区",
-  ageGroup: "30s",
-  teamId: "team_001",
+  displayName: 'テストユーザー',
+  avatarUrl: 'https://via.placeholder.com/150',
+  district: '渋谷区',
+  ageGroup: '30s',
+  teamId: 'team_001',
+  targetSteps: 8000,
   totalSteps: 45000,
   totalDistanceKm: 31.5,
-  createdAt: DateTime.parse("2026-10-01T00:00:00Z"),
-  updatedAt: DateTime.parse("2026-10-28T00:00:00Z"),
+  createdAt: DateTime.parse('2026-10-01T00:00:00Z'),
+  updatedAt: DateTime.parse('2026-10-28T00:00:00Z'),
 );
 
 final List<Team> initialTeams = [

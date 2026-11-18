@@ -6,6 +6,7 @@ import 'ranking_screen.dart';
 import 'friend_screen.dart';
 import 'profile_screen.dart';
 import 'team_screen.dart';
+import '../services/ranking_service.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -34,7 +35,11 @@ class HomeScreen extends StatelessWidget {
                     },
                     child: const Column(
                       children: [
-                        Icon(Icons.account_circle, size: 48, color: Colors.grey),
+                        Icon(
+                          Icons.account_circle,
+                          size: 48,
+                          color: Colors.grey,
+                        ),
                         Text(
                           'プロフ',
                           style: TextStyle(fontWeight: FontWeight.bold),
@@ -99,20 +104,59 @@ class HomeScreen extends StatelessWidget {
                       const Spacer(),
 
                       // 表彰台
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          _buildPodiumBlock('2', 70, Colors.grey.shade300),
-                          const SizedBox(width: 8),
-                          _buildPodiumBlock('1', 100, Colors.amber.shade300),
-                          const SizedBox(width: 8),
-                          _buildPodiumBlock('3', 50, Colors.brown.shade200),
-                        ],
+                      FutureBuilder<List<WardRanking>>(
+                        future: RankingService().getWardRankings(
+                          startDate: DateTime.now(),
+                          endDate: DateTime.now(),
+                        ),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const SizedBox(
+                              width: 160,
+                              child: Center(child: CircularProgressIndicator()),
+                            );
+                          }
+                          if (snapshot.hasError) {
+                            return const Text('取得失敗');
+                          }
+
+                          final ranking = snapshot.data ?? const [];
+
+                          if (ranking.isEmpty) {
+                            return const Text('データなし');
+                          }
+
+                          final top = ranking.take(3).toList();
+
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              if (top.length > 1)
+                                _buildPodiumBlock(
+                                  top[1].district,
+                                  top[1].rank,
+                                  70,
+                                ),
+                              if (top.isNotEmpty)
+                                _buildPodiumBlock(
+                                  top[0].district,
+                                  top[0].rank,
+                                  100,
+                                ),
+                              if (top.length > 2)
+                                _buildPodiumBlock(
+                                  top[2].district,
+                                  top[2].rank,
+                                  50,
+                                ),
+                            ],
+                          );
+                        },
                       ),
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 16),
 
                 // 3. 2x2 メニューボタン
@@ -186,10 +230,27 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPodiumBlock(String rank, double height, Color color) {
+  Widget _buildPodiumBlock(String district, int rank, double height) {
+    final color = rank == 1
+        ? Colors.amber.shade300
+        : rank == 2
+        ? Colors.grey.shade300
+        : Colors.brown.shade200;
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
+        SizedBox(
+          width: 48,
+          child: Text(
+            district,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+          ),
+        ),
+        const SizedBox(height: 4),
         Container(
           width: 45,
           height: height,
@@ -199,11 +260,8 @@ class HomeScreen extends StatelessWidget {
           ),
           child: Center(
             child: Text(
-              '($rank)',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              '$rank位',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
           ),
         ),
@@ -222,9 +280,7 @@ class HomeScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       onPressed: onTap,
       child: Row(

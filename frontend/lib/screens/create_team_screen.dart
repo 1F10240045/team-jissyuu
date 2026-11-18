@@ -37,9 +37,7 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('チーム作成'),
-      ),
+      appBar: AppBar(title: const Text('チーム作成')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(

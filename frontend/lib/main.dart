@@ -87,10 +87,8 @@ class _TeamMainNavigationState extends State<TeamMainNavigation> {
       onSelectTeam: (team) {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => TeamDetailScreen(
-              team: team,
-              currentUserId: dummyUserId,
-            ),
+            builder: (context) =>
+                TeamDetailScreen(team: team, currentUserId: dummyUserId),
           ),
         );
       },

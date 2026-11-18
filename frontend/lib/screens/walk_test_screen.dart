@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pedometer/pedometer.dart';
+
 import '../services/walk_log_service.dart';
 
 class WalkTestScreen extends StatefulWidget {
@@ -51,9 +52,7 @@ class _WalkTestScreenState extends State<WalkTestScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('歩数計測テスト'),
-      ),
+      appBar: AppBar(title: const Text('歩数計測テスト')),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -62,18 +61,31 @@ class _WalkTestScreenState extends State<WalkTestScreen> {
             const SizedBox(height: 10),
             Text(
               _steps,
-              style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Colors.blue),
+              style: const TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue,
+              ),
             ),
             const SizedBox(height: 20),
-            Text('ステータス: $_status', style: const TextStyle(color: Colors.grey, fontSize: 14)),
+            Text(
+              'ステータス: $_status',
+              style: const TextStyle(color: Colors.grey, fontSize: 14),
+            ),
             const SizedBox(height: 40),
 
             // ★ PCエミュレータ検証用のダミーボタン
             ElevatedButton.icon(
               icon: const Icon(Icons.add_location_alt),
-              label: const Text('【テスト用】100歩進める', style: TextStyle(fontSize: 16)),
+              label: const Text(
+                '【テスト用】100歩進める',
+                style: TextStyle(fontSize: 16),
+              ),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
               ),
               onPressed: () {
                 setState(() {

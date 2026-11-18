@@ -111,10 +111,7 @@ class RecordScreen extends StatelessWidget {
                 SizedBox(width: 8),
                 Text(
                   '同年代との歩数比較',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -163,10 +160,7 @@ class RecordScreen extends StatelessWidget {
                   children: [
                     const Text(
                       '同年代（70代）平均',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.black87,
-                      ),
+                      style: TextStyle(fontSize: 18, color: Colors.black87),
                     ),
                     Text(
                       '$peerAverageSteps 歩',

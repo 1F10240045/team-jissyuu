@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'team_main_navigation.dart';
 
 class FriendScreen extends StatefulWidget {
   const FriendScreen({super.key});
@@ -8,11 +9,26 @@ class FriendScreen extends StatefulWidget {
 }
 
 class _FriendScreenState extends State<FriendScreen> {
-  // 型指定をシンプルにして構文エラーを完全に防止
+  // フレンド一覧データ
   final friendsList = [
-    {'id': 'user_001', 'name': 'すずき はなこ', 'steps': 7400, 'isOnline': true},
-    {'id': 'user_002', 'name': 'たなか さとる', 'steps': 8200, 'isOnline': false},
-    {'id': 'user_003', 'name': 'やまだ いちろう', 'steps': 4900, 'isOnline': true},
+    {
+      'id': 'user_001',
+      'name': 'すずき はなこ',
+      'steps': 7400,
+      'isOnline': true,
+    },
+    {
+      'id': 'user_002',
+      'name': 'たなか さとる',
+      'steps': 8200,
+      'isOnline': false,
+    },
+    {
+      'id': 'user_003',
+      'name': 'やまだ いちろう',
+      'steps': 4900,
+      'isOnline': true,
+    },
   ];
 
   void _showAddFriendDialog() {
@@ -94,6 +110,17 @@ class _FriendScreenState extends State<FriendScreen> {
         foregroundColor: Colors.white,
         actions: [
           IconButton(
+            icon: const Icon(Icons.groups, size: 28),
+            tooltip: 'チーム一覧を見る',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const TeamMainNavigation(),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.person_add, size: 28),
             tooltip: 'フレンド追加',
             onPressed: _showAddFriendDialog,
@@ -106,7 +133,7 @@ class _FriendScreenState extends State<FriendScreen> {
           children: [
             Container(
               width: double.infinity,
-              margin: const EdgeInsets.all(16),
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.teal.shade50,
@@ -130,6 +157,32 @@ class _FriendScreenState extends State<FriendScreen> {
                 ],
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.groups),
+                  label: const Text(
+                    '地域のチーム一覧・作成はこちら',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.teal.shade800,
+                    side: BorderSide(color: Colors.teal.shade600),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const TeamMainNavigation(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
             Expanded(
               child: friendsList.isEmpty
                   ? _buildEmptyState()

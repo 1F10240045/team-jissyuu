@@ -5,7 +5,7 @@ import 'record_screen.dart';
 import 'ranking_screen.dart';
 import 'friend_screen.dart';
 import 'profile_screen.dart';
-import 'team_screen.dart';
+import 'team_main_navigation.dart';
 import '../services/ranking_service.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -68,7 +68,7 @@ class HomeScreen extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const TeamScreen(),
+                              builder: (context) => const TeamMainNavigation(),
                             ),
                           );
                         },

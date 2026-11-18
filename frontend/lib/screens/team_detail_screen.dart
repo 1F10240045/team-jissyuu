@@ -1,13 +1,14 @@
-// lib/screens/team_detail_screen.dart
 import 'package:flutter/material.dart';
 
 import '../models/team.dart';
+import '../services/team_service.dart';
 
 class TeamDetailScreen extends StatelessWidget {
   final Team team;
   final String currentUserId;
+  final TeamService _teamService = TeamService();
 
-  const TeamDetailScreen({
+  TeamDetailScreen({
     Key? key,
     required this.team,
     required this.currentUserId,
@@ -104,6 +105,37 @@ class TeamDetailScreen extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      try {
+                        await _teamService.joinTeam(
+                          teamId: team.teamId,
+                          userId: currentUserId,
+                        );
+
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('チームに参加しました'),
+                            ),
+                          );
+                          Navigator.of(context).pop();
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('参加に失敗しました: $e')),
+                          );
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.group_add),
+                    label: const Text('このチームに参加する'),
+                  ),
                 ),
               ],
             ),

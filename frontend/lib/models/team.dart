@@ -7,6 +7,7 @@ class UserProfile {
   final String district;
   final String ageGroup;
   final String? teamId;
+  final int targetSteps;
   final int totalSteps;
   final double totalDistanceKm;
   final DateTime createdAt;
@@ -19,6 +20,7 @@ class UserProfile {
     required this.district,
     required this.ageGroup,
     this.teamId,
+    this.targetSteps = 8000,
     required this.totalSteps,
     required this.totalDistanceKm,
     required this.createdAt,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../models/team.dart';
 import '../services/team_service.dart';
 
@@ -18,9 +19,7 @@ class TeamDetailScreen extends StatelessWidget {
     final isManager = team.managerUserId == currentUserId;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('チーム詳細'),
-      ),
+      appBar: AppBar(title: const Text('チーム詳細')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Card(

@@ -5,15 +5,16 @@ const String dummyUserId = "dummy_user_id";
 
 final UserProfile dummyUserProfile = UserProfile(
   userId: dummyUserId,
-  displayName: "テストユーザー",
-  avatarUrl: "https://via.placeholder.com/150",
-  district: "渋谷区",
-  ageGroup: "30s",
-  teamId: "team_001",
+  displayName: 'テストユーザー',
+  avatarUrl: 'https://via.placeholder.com/150',
+  district: '渋谷区',
+  ageGroup: '30s',
+  teamId: 'team_001',
+  targetSteps: 8000,
   totalSteps: 45000,
   totalDistanceKm: 31.5,
-  createdAt: DateTime.parse("2026-10-01T00:00:00Z"),
-  updatedAt: DateTime.parse("2026-10-28T00:00:00Z"),
+  createdAt: DateTime.parse('2026-10-01T00:00:00Z'),
+  updatedAt: DateTime.parse('2026-10-28T00:00:00Z'),
 );
 
 final List<Team> initialTeams = [
@@ -40,7 +41,6 @@ final List<Team> initialTeams = [
     updatedAt: DateTime.parse("2026-10-10T00:00:00Z"),
   ),
 ];
-
 
 // 1. 東京都23区の初期ランキングデータ（デモで1位逆転しやすい数値バランスに設定）
 final List initialDistrictRankings = [

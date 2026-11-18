@@ -1,5 +1,6 @@
 // lib/screens/team_list_screen.dart
 import 'package:flutter/material.dart';
+
 import '../models/team.dart';
 
 class TeamListScreen extends StatelessWidget {
@@ -41,10 +42,16 @@ class TeamListScreen extends StatelessWidget {
                 children: [
                   Text(
                     team.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
                   ),
                   Chip(
-                    label: Text(team.district, style: const TextStyle(fontSize: 12)),
+                    label: Text(
+                      team.district,
+                      style: const TextStyle(fontSize: 12),
+                    ),
                     visualDensity: VisualDensity.compact,
                   ),
                 ],
@@ -62,8 +69,14 @@ class TeamListScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('メンバー: ${team.memberCount}名', style: const TextStyle(fontSize: 12)),
-                      Text('累計歩数: ${team.totalSteps} 歩', style: const TextStyle(fontSize: 12)),
+                      Text(
+                        'メンバー: ${team.memberCount}名',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      Text(
+                        '累計歩数: ${team.totalSteps} 歩',
+                        style: const TextStyle(fontSize: 12),
+                      ),
                     ],
                   ),
                 ],

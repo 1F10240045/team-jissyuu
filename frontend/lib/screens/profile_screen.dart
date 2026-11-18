@@ -15,9 +15,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // 東京都23区リスト
   final List<String> _districts = [
-    '千代田区', '中央区', '港区', '新宿区', '文京区', '台東区', '墨田区', '江東区',
-    '品川区', '目黒区', '大田区', '世田谷区', '渋谷区', '中野区', '杉並区', '豊島区',
-    '北区', '荒川区', '板橋区', '練馬区', '足立区', '葛飾区', '江戸川区'
+    '千代田区',
+    '中央区',
+    '港区',
+    '新宿区',
+    '文京区',
+    '台東区',
+    '墨田区',
+    '江東区',
+    '品川区',
+    '目黒区',
+    '大田区',
+    '世田谷区',
+    '渋谷区',
+    '中野区',
+    '杉並区',
+    '豊島区',
+    '北区',
+    '荒川区',
+    '板橋区',
+    '練馬区',
+    '足立区',
+    '葛飾区',
+    '江戸川区',
   ];
 
   // 年代リスト
@@ -61,10 +81,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (doc.exists && doc.data() != null) {
           final data = doc.data()!;
           setState(() {
-            _nameController.text = data['name'] ?? '';
-            _selectedDistrict = _districts.contains(data['district']) ? data['district'] : null;
-            _selectedAgeGroup = _ageGroups.contains(data['ageGroup']) ? data['ageGroup'] : null;
-            if (data['targetSteps'] != null && _stepGoals.contains(data['targetSteps'])) {
+            _nameController.text = (data['name'] ?? data['displayName'] ?? '')
+                .toString();
+            _selectedDistrict = _districts.contains(data['district'])
+                ? data['district']
+                : null;
+            _selectedAgeGroup = _ageGroups.contains(data['ageGroup'])
+                ? data['ageGroup']
+                : null;
+            if (data['targetSteps'] != null &&
+                _stepGoals.contains(data['targetSteps'])) {
               _selectedTargetSteps = data['targetSteps'];
             }
           });
@@ -90,6 +116,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await FirebaseFirestore.instance.collection('users').doc(_userId).set({
         'name': _nameController.text.trim(),
+        'displayName': _nameController.text.trim(),
         'district': _selectedDistrict,
         'ageGroup': _selectedAgeGroup,
         'targetSteps': _selectedTargetSteps,
@@ -108,10 +135,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       debugPrint('Firestore保存エラー: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('保存に失敗しました: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('保存に失敗しました: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -132,9 +156,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('プロフィール設定'),
-      ),
+      appBar: AppBar(title: const Text('プロフィール設定')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -143,7 +165,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // 名前入力欄
-                  const Text('名前（ニックネーム）', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text(
+                    '名前（ニックネーム）',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _nameController,
@@ -155,12 +180,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 24),
 
                   // 所属区選択 (Dropdown)
-                  const Text('所属する区', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text(
+                    '所属する区',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     value: _selectedDistrict,
                     hint: const Text('選択してください'),
-                    decoration: const InputDecoration(border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                    ),
                     items: _districts.map((district) {
                       return DropdownMenuItem(
                         value: district,
@@ -176,7 +206,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 24),
 
                   // 年代選択 (ChoiceChip)
-                  const Text('年代', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text(
+                    '年代',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8.0,
@@ -196,7 +229,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 24),
 
                   // 1日の目標歩数 (ChoiceChip)
-                  const Text('1日の目標歩数', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text(
+                    '1日の目標歩数',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8.0,

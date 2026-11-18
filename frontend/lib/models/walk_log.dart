@@ -49,7 +49,10 @@ class WalkLog {
   }
 
   /// 距離(km)と時間(分)から歩行速度（分速 m/分）を計算
-  static double calculateSpeedMetersPerMin(double distanceKm, int durationMinutes) {
+  static double calculateSpeedMetersPerMin(
+    double distanceKm,
+    int durationMinutes,
+  ) {
     if (durationMinutes <= 0) return 0.0;
     final meters = distanceKm * 1000;
     return double.parse((meters / durationMinutes).toStringAsFixed(1));
@@ -81,8 +84,11 @@ class WalkLog {
     }
 
     final steps = (map['steps'] as num?)?.toInt() ?? 0;
-    final distanceKm = (map['distanceKm'] as num?)?.toDouble() ?? calculateDistanceKm(steps);
-    final durationMinutes = (map['durationMinutes'] as num?)?.toInt() ?? calculateEstimatedMinutes(steps);
+    final distanceKm =
+        (map['distanceKm'] as num?)?.toDouble() ?? calculateDistanceKm(steps);
+    final durationMinutes =
+        (map['durationMinutes'] as num?)?.toInt() ??
+        calculateEstimatedMinutes(steps);
 
     return WalkLog(
       walkLogId: id ?? (map['walkLogId'] as String? ?? ''),
@@ -92,9 +98,11 @@ class WalkLog {
       date: map['date'] as String? ?? '',
       steps: steps,
       distanceKm: distanceKm,
-      caloriesKcal: (map['caloriesKcal'] as num?)?.toInt() ?? calculateCalories(steps),
+      caloriesKcal:
+          (map['caloriesKcal'] as num?)?.toInt() ?? calculateCalories(steps),
       durationMinutes: durationMinutes,
-      speedMetersPerMin: (map['speedMetersPerMin'] as num?)?.toDouble() ??
+      speedMetersPerMin:
+          (map['speedMetersPerMin'] as num?)?.toDouble() ??
           calculateSpeedMetersPerMin(distanceKm, durationMinutes),
       createdAt: parsedCreatedAt,
     );

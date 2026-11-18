@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:pedometer/pedometer.dart';
 
@@ -141,13 +142,13 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
     final distanceKm = WalkLog.calculateDistanceKm(_steps);
     final caloriesKcal = WalkLog.calculateCalories(_steps);
     final durationMin = WalkLog.calculateEstimatedMinutes(_steps);
-    final speedMPerMin =
-        WalkLog.calculateSpeedMetersPerMin(distanceKm, durationMin);
+    final speedMPerMin = WalkLog.calculateSpeedMetersPerMin(
+      distanceKm,
+      durationMin,
+    );
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('運動・歩数計測'),
-      ),
+      appBar: AppBar(title: const Text('運動・歩数計測')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -202,8 +203,10 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 28,
+                  horizontal: 20,
+                ),
                 child: Column(
                   children: [
                     const Text(
@@ -322,8 +325,10 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
                   Expanded(
                     child: Text(
                       'センサー状態: $_status',
-                      style:
-                          const TextStyle(fontSize: 13, color: Colors.black87),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.black87,
+                      ),
                     ),
                   ),
                 ],
@@ -354,8 +359,10 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
                 Expanded(
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.directions_run),
-                    label:
-                        const Text('+1,000歩', style: TextStyle(fontSize: 16)),
+                    label: const Text(
+                      '+1,000歩',
+                      style: TextStyle(fontSize: 16),
+                    ),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
@@ -382,8 +389,9 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onPressed:
-                  _isSaving ? null : () => _saveToFirestore(isAuto: false),
+              onPressed: _isSaving
+                  ? null
+                  : () => _saveToFirestore(isAuto: false),
             ),
           ],
         ),

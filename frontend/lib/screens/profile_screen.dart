@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/seed_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -261,6 +262,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: _isSaving
                           ? const CircularProgressIndicator(color: Colors.white)
                           : const Text('保存する', style: TextStyle(fontSize: 16)),
+                    ),
+                  ),
+                  
+
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: OutlinedButton.icon(
+                      onPressed: _isSaving
+                          ? null
+                          : () async {
+                              setState(() => _isSaving = true);
+                              try {
+                                await SeedService.seedInitialData();
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('初期データを投入しました'),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('データ投入エラー: $e'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              } finally {
+                                if (mounted) setState(() => _isSaving = false);
+                              }
+                            },
+                      icon: const Icon(Icons.cloud_upload),
+                      label: const Text('初期データ投入（デモ用）'),
                     ),
                   ),
                 ],

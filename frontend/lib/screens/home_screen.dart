@@ -34,37 +34,17 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingRanking = false;
   int _nudgeIndex = 0;
 
-  /// スライド4枚目「④ 損失回避と利他性をトリガーとする適応型ナッジ」メッセージ生成
-  /// スマホ画面幅で単語の途中で汚く折り返されないよう改行位置と文言を最適化
-  Map<String, dynamic> _getCurrentNudge() {
+  /// 1行にスリムに収まる応援ナッジメッセージ（タップで切替）
+  String _getSlimNudgeText() {
     final remaining = (_targetSteps - _todaySteps).clamp(0, _targetSteps);
-    final nudges = <Map<String, dynamic>>[
-      {
-        'tag': '損失回避ナッジ',
-        'icon': Icons.trending_up,
-        'color': Colors.deepOrange,
-        'bgColor': Colors.orange.shade50,
-        'text': _todaySteps >= _targetSteps
-            ? '🔥 $_userDistrictの達成率が急上昇中！\nもう500歩でさらに上位に迫れます！'
-            : '⚠️ 目標まであと $remaining 歩！\n他の区に順位を抜かれないよう歩きましょう！',
-      },
-      {
-        'tag': '利他性・連帯ナッジ',
-        'icon': Icons.volunteer_activism,
-        'color': Colors.teal.shade700,
-        'bgColor': Colors.teal.shade50,
-        'text': '🤝 同じ$_userDistrictの仲間も歩いています！\nあなたの1歩が地域の順位アップに繋がります！',
-      },
-      {
-        'tag': '同年代比較ナッジ',
-        'icon': Icons.emoji_emotions,
-        'color': Colors.blue.shade700,
-        'bgColor': Colors.blue.shade50,
-        'text':
-            '👏 同年代（${WalkLogService.currentUserAgeGroup}）の仲間と一緒に、\n無理のないペースで健康寿命を延ばしましょう！',
-      },
+    final list = [
+      _todaySteps >= _targetSteps
+          ? '🔥 $_userDistrictの達成率が上昇中！さらに上位へ！'
+          : '⚠️ 目標まであと$remaining歩！他区に抜かれないよう歩こう',
+      '🤝 同じ$_userDistrictの仲間も歩行中！あなたの1歩が地域の力に',
+      '👏 同年代（${WalkLogService.currentUserAgeGroup}）の仲間と無理なく健康寿命を延ばそう',
     ];
-    return nudges[_nudgeIndex % nudges.length];
+    return list[_nudgeIndex % list.length];
   }
 
   @override
@@ -74,7 +54,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _refreshHomeData();
   }
 
-  /// `dummy_data.dart` の初期ランキングから上位3区のフォールバックデータを生成
   List<WardRanking> _buildFallbackTopWards() {
     final list = <WardRanking>[];
     for (var i = 0; i < initialDistrictRankings.length && i < 3; i++) {
@@ -93,7 +72,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return list;
   }
 
-  /// 本日の歩数・ユーザープロフィール・上位3区ランキングをリアルタイムに取得・更新
   Future<void> _refreshHomeData() async {
     setState(() {
       _todaySteps = WalkLogService.currentTodaySteps;
@@ -150,9 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         }
       }
-    } catch (_) {
-      // エミュレータ未接続時はローカルキャッシュ値をそのまま利用
-    }
+    } catch (_) {}
 
     try {
       final now = DateTime.now();
@@ -179,7 +155,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// 各画面へ遷移し、戻ってきたときにホーム画面の表示を最新状態に更新する
   Future<void> _navigateAndRefresh(Widget screen) async {
     await Navigator.push(
       context,
@@ -198,230 +173,144 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFE8F1F8),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(14.0),
-            child: Column(
-              children: [
-                // 1. 上部ヘッダー（プロフ設定 ＋ 文字サイズ切替ボタン ＋ 所属区バッジ）
-                Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => _navigateAndRefresh(const ProfileScreen()),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.account_circle,
-                              size: 44,
-                              color: AppTheme.primaryColor,
-                            ),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'プロフ設定',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                  Text(
-                                    _userName,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey.shade700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    // ★ シニア向け：文字サイズワンタップ切り替えボタン
-                    InkWell(
-                      onTap: () {
-                        setState(() {
-                          MyApp.cycleFontScale();
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(18),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 7,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.shade100,
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: Colors.amber.shade700,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.text_fields,
-                              size: 18,
-                              color: Colors.amber.shade900,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '文字:${MyApp.fontScaleLabel}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.amber.shade900,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    // 所属区バッジ
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 4,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // 1. 上部ヘッダー（プロフ設定 ＋ 文字サイズ切替ボタン ＋ 所属区バッジ）
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => _navigateAndRefresh(const ProfileScreen()),
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(
-                            Icons.location_on,
+                            Icons.account_circle,
+                            size: 40,
                             color: AppTheme.primaryColor,
-                            size: 18,
                           ),
-                          const SizedBox(width: 2),
-                          Text(
-                            _userDistrict,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                // 1.5 行動経済学ナッジ応援バナー（タップで切替・中途半端な改行を防止）
-                Builder(
-                  builder: (context) {
-                    final nudge = _getCurrentNudge();
-                    final Color accent = nudge['color'] as Color;
-                    final Color bg = nudge['bgColor'] as Color;
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _nudgeIndex = (_nudgeIndex + 1) % 3;
-                        });
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: bg,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: accent.withValues(alpha: 0.45),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(
-                                  nudge['icon'] as IconData,
-                                  color: accent,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    '本日の応援（${nudge['tag']}）',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                      color: accent,
-                                    ),
+                                const Text(
+                                  'プロフ設定',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
                                   ),
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.8),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    '切替 ↻',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: accent,
-                                    ),
+                                Text(
+                                  _userName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade700,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              nudge['text'] as String,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                height: 1.35,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        MyApp.cycleFontScale();
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade100,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.amber.shade700,
+                          width: 1.5,
                         ),
                       ),
-                    );
-                  },
-                ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.text_fields,
+                            size: 16,
+                            color: Colors.amber.shade900,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            '文字:${MyApp.fontScaleLabel}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.amber.shade900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 3,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.location_on,
+                          color: AppTheme.primaryColor,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          _userDistrict,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
 
-                const SizedBox(height: 12),
+              const SizedBox(height: 8),
 
-                // 2. 中央のエリア（チームボタン + 23区対抗表彰台 トップ3）
-                // 固定高さを廃止し、文字サイズを特大にしても絶対にOverflowしない構造
-                Container(
+              // 2. 中央のエリア（チームボタン + 23区対抗表彰台 トップ3）
+              // Expanded で残り高さに自動フィットするため絶対に画面からはみ出ない
+              Expanded(
+                child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
-                    vertical: 14,
+                    vertical: 10,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -445,7 +334,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
-                            vertical: 16,
+                            vertical: 12,
                           ),
                           decoration: BoxDecoration(
                             color: Colors.green.shade50,
@@ -456,12 +345,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             mainAxisSize: MainAxisSize.min,
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.groups, size: 34, color: Colors.green),
+                              Icon(Icons.groups, size: 30, color: Colors.green),
                               SizedBox(height: 4),
                               Text(
                                 'チーム',
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.green,
                                 ),
@@ -478,230 +367,267 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: GestureDetector(
                           onTap: () =>
                               _navigateAndRefresh(const RankingScreen()),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.emoji_events,
-                                    color: Colors.amber,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Flexible(
-                                    child: Text(
-                                      '23区対抗 トップ3',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                  ),
-                                  if (_isLoadingRanking) ...[
-                                    const SizedBox(width: 6),
-                                    const SizedBox(
-                                      width: 12,
-                                      height: 12,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              Row(
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final availH = (constraints.maxHeight - 28).clamp(
+                                60.0,
+                                150.0,
+                              );
+                              return Column(
                                 mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
-                                crossAxisAlignment: CrossAxisAlignment.end,
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  if (_topWards.length > 1)
-                                    Expanded(
-                                      child: _buildPodiumBlock(
-                                        _topWards[1].district,
-                                        _topWards[1].rank,
-                                        _topWards[1].achievementRate,
-                                        62,
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.emoji_events,
+                                        color: Colors.amber,
+                                        size: 18,
                                       ),
-                                    ),
-                                  const SizedBox(width: 6),
-                                  if (_topWards.isNotEmpty)
-                                    Expanded(
-                                      child: _buildPodiumBlock(
-                                        _topWards[0].district,
-                                        _topWards[0].rank,
-                                        _topWards[0].achievementRate,
-                                        84,
+                                      const SizedBox(width: 4),
+                                      const Flexible(
+                                        child: Text(
+                                          '23区対抗 トップ3',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
                                       ),
+                                      if (_isLoadingRanking) ...[
+                                        const SizedBox(width: 6),
+                                        const SizedBox(
+                                          width: 10,
+                                          height: 10,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  Expanded(
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceEvenly,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        if (_topWards.length > 1)
+                                          Expanded(
+                                            child: _buildPodiumBlock(
+                                              _topWards[1].district,
+                                              _topWards[1].rank,
+                                              _topWards[1].achievementRate,
+                                              (availH * 0.44).clamp(28.0, 68.0),
+                                            ),
+                                          ),
+                                        const SizedBox(width: 6),
+                                        if (_topWards.isNotEmpty)
+                                          Expanded(
+                                            child: _buildPodiumBlock(
+                                              _topWards[0].district,
+                                              _topWards[0].rank,
+                                              _topWards[0].achievementRate,
+                                              (availH * 0.58).clamp(36.0, 88.0),
+                                            ),
+                                          ),
+                                        const SizedBox(width: 6),
+                                        if (_topWards.length > 2)
+                                          Expanded(
+                                            child: _buildPodiumBlock(
+                                              _topWards[2].district,
+                                              _topWards[2].rank,
+                                              _topWards[2].achievementRate,
+                                              (availH * 0.34).clamp(24.0, 52.0),
+                                            ),
+                                          ),
+                                      ],
                                     ),
-                                  const SizedBox(width: 6),
-                                  if (_topWards.length > 2)
-                                    Expanded(
-                                      child: _buildPodiumBlock(
-                                        _topWards[2].district,
-                                        _topWards[2].rank,
-                                        _topWards[2].achievementRate,
-                                        48,
-                                      ),
-                                    ),
+                                  ),
                                 ],
-                              ),
-                            ],
+                              );
+                            },
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
+              ),
 
-                const SizedBox(height: 12),
+              const SizedBox(height: 8),
 
-                // 3. 本日の歩数・目標達成リアルタイムゲージカード（1行に綺麗に収まる文言）
-                GestureDetector(
-                  onTap: () => _navigateAndRefresh(const ExerciseScreen()),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16.0),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.5),
-                        width: 1.5,
-                      ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Flexible(
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.directions_walk,
-                                    color: AppTheme.primaryColor,
-                                    size: 26,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Flexible(
-                                    child: Text(
-                                      '今日の歩数: $_todaySteps 歩',
-                                      style: const TextStyle(
-                                        fontSize: 19,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Text(
-                              '$distanceKm km ($progressPercent%)',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.primaryColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: LinearProgressIndicator(
-                            value: progress,
-                            minHeight: 14,
-                            backgroundColor: Colors.grey.shade200,
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                              AppTheme.primaryColor,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                _todaySteps >= _targetSteps
-                                    ? '🎉 本日の目標（$_targetSteps歩）を達成！'
-                                    : '目標 $_targetSteps歩 まであと ${_targetSteps - _todaySteps} 歩',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  color: _todaySteps >= _targetSteps
-                                      ? AppTheme.primaryColor
-                                      : Colors.black87,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              '計測画面へ ＞',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.primaryColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+              // 3. 本日の歩数・目標達成ゲージ ＋ 1行スリム応援ナッジ（合体カード）
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14.0,
+                  vertical: 10.0,
                 ),
-
-                const SizedBox(height: 14),
-
-                // 4. 2x2 メニューボタン（文字が大きく見やすいデザイン）
-                GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 2.1,
-                  children: [
-                    _buildMenuButton(
-                      context,
-                      label: '運動',
-                      icon: Icons.directions_run,
-                      onTap: () => _navigateAndRefresh(const ExerciseScreen()),
-                    ),
-                    _buildMenuButton(
-                      context,
-                      label: '記録',
-                      icon: Icons.edit_note,
-                      onTap: () => _navigateAndRefresh(const RecordScreen()),
-                    ),
-                    _buildMenuButton(
-                      context,
-                      label: 'ランキング',
-                      icon: Icons.emoji_events,
-                      onTap: () => _navigateAndRefresh(const RankingScreen()),
-                    ),
-                    _buildMenuButton(
-                      context,
-                      label: 'フレンド',
-                      icon: Icons.people,
-                      onTap: () => _navigateAndRefresh(const FriendScreen()),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.5),
+                    width: 1.5,
+                  ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 3,
+                      offset: Offset(0, 1),
                     ),
                   ],
                 ),
-              ],
-            ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GestureDetector(
+                      onTap: () => _navigateAndRefresh(const ExerciseScreen()),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Flexible(
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.directions_walk,
+                                      color: AppTheme.primaryColor,
+                                      size: 22,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        '今日の歩数: $_todaySteps 歩',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                '$distanceKm km ($progressPercent%)',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.primaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: LinearProgressIndicator(
+                              value: progress,
+                              minHeight: 10,
+                              backgroundColor: Colors.grey.shade200,
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                AppTheme.primaryColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    // 1行スリム応援ナッジ（タップでメッセージ切替）
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _nudgeIndex = (_nudgeIndex + 1) % 3;
+                        });
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _getSlimNudgeText(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.autorenew,
+                              size: 14,
+                              color: Colors.orange.shade800,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              // 4. 2x2 メニューボタン（スクロールなしで1画面に4つすべて収まる）
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 2.35,
+                children: [
+                  _buildMenuButton(
+                    context,
+                    label: '運動',
+                    icon: Icons.directions_run,
+                    onTap: () => _navigateAndRefresh(const ExerciseScreen()),
+                  ),
+                  _buildMenuButton(
+                    context,
+                    label: '記録',
+                    icon: Icons.edit_note,
+                    onTap: () => _navigateAndRefresh(const RecordScreen()),
+                  ),
+                  _buildMenuButton(
+                    context,
+                    label: 'ランキング',
+                    icon: Icons.emoji_events,
+                    onTap: () => _navigateAndRefresh(const RankingScreen()),
+                  ),
+                  _buildMenuButton(
+                    context,
+                    label: 'フレンド',
+                    icon: Icons.people,
+                    onTap: () => _navigateAndRefresh(const FriendScreen()),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -729,17 +655,17 @@ class _HomeScreenState extends State<HomeScreen> {
           textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
         ),
         Text(
           '${achievementRate.toStringAsFixed(0)}%',
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: FontWeight.w600,
             color: Colors.grey.shade700,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Container(
           width: double.infinity,
           height: height,
@@ -750,7 +676,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Center(
             child: Text(
               '$rank位',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
           ),
         ),
@@ -770,7 +696,7 @@ class _HomeScreenState extends State<HomeScreen> {
         foregroundColor: Colors.black,
         elevation: 2,
         padding: const EdgeInsets.symmetric(horizontal: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       onPressed: onTap,
       child: Row(
@@ -781,11 +707,11 @@ class _HomeScreenState extends State<HomeScreen> {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
             ),
           ),
-          const SizedBox(width: 8),
-          Icon(icon, size: 28, color: AppTheme.primaryColor),
+          const SizedBox(width: 6),
+          Icon(icon, size: 26, color: AppTheme.primaryColor),
         ],
       ),
     );

@@ -1,21 +1,49 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-class RecordScreen extends StatelessWidget {
+import '../constants/dummy_data.dart';
+import '../models/walk_log.dart';
+import '../services/walk_log_service.dart';
+
+class RecordScreen extends StatefulWidget {
   const RecordScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final int todaySteps = 5200;
-    final int peerAverageSteps = 4500;
+  State<RecordScreen> createState() => _RecordScreenState();
+}
 
-    // 型指定をシンプルにしてエラーを回避
-    final dummyLogs = [
+class _RecordScreenState extends State<RecordScreen> {
+  final WalkLogService _walkLogService = WalkLogService();
+
+  int _todaySteps = WalkLogService.currentTodaySteps;
+  String _ageGroup = WalkLogService.currentUserAgeGroup;
+  List<Map<String, dynamic>> _logs = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _buildLogsWithToday();
+    _loadFromFirestoreIfAvailable();
+  }
+
+  /// 本日の最新歩数と過去のサンプル履歴を合体して表示用リストを生成
+  void _buildLogsWithToday() {
+    final todayDateStr = _walkLogService
+        .getTodayDateString()
+        .replaceAll('-', '/');
+    final todayDistance = WalkLog.calculateDistanceKm(_todaySteps);
+    final todayCalories = WalkLog.calculateCalories(_todaySteps);
+    final todayDuration = WalkLog.calculateEstimatedMinutes(_todaySteps);
+
+    _logs = [
       {
-        'date': '2026/11/11',
-        'steps': 5200,
-        'distance': 3.6,
-        'calories': 180,
-        'duration': 45,
+        'date': '$todayDateStr（今日）',
+        'steps': _todaySteps,
+        'distance': todayDistance,
+        'calories': todayCalories,
+        'duration': todayDuration,
+        'isToday': true,
       },
       {
         'date': '2026/11/10',
@@ -23,6 +51,7 @@ class RecordScreen extends StatelessWidget {
         'distance': 3.3,
         'calories': 165,
         'duration': 40,
+        'isToday': false,
       },
       {
         'date': '2026/11/09',
@@ -30,6 +59,7 @@ class RecordScreen extends StatelessWidget {
         'distance': 2.7,
         'calories': 135,
         'duration': 35,
+        'isToday': false,
       },
       {
         'date': '2026/11/08',
@@ -37,8 +67,49 @@ class RecordScreen extends StatelessWidget {
         'distance': 4.2,
         'calories': 210,
         'duration': 55,
+        'isToday': false,
       },
     ];
+  }
+
+  Future<void> _loadFromFirestoreIfAvailable() async {
+    try {
+      final uid =
+          FirebaseAuth.instance.currentUser?.uid ?? _walkLogService.currentUserId;
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get()
+          .timeout(const Duration(milliseconds: 1200));
+
+      if (userDoc.exists && userDoc.data() != null) {
+        final data = userDoc.data()!;
+        final age = data['ageGroup'] as String?;
+        final todayStepsInUser = (data['todaySteps'] as num?)?.toInt();
+
+        if (mounted) {
+          setState(() {
+            if (age != null && age.isNotEmpty) {
+              _ageGroup = age;
+              WalkLogService.currentUserAgeGroup = age;
+            }
+            if (todayStepsInUser != null && todayStepsInUser > _todaySteps) {
+              _todaySteps = todayStepsInUser;
+              WalkLogService.currentTodaySteps = todayStepsInUser;
+            }
+            _buildLogsWithToday();
+          });
+        }
+      }
+    } catch (_) {
+      // エミュレータ未接続時はローカルキャッシュ値をそのまま表示
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final int peerAverageSteps =
+        averageStepsByAgeGroup[_ageGroup] ?? 5600;
 
     return Scaffold(
       appBar: AppBar(
@@ -57,7 +128,8 @@ class RecordScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildPeerBenchmarkCard(
-                todaySteps: todaySteps,
+                todaySteps: _todaySteps,
+                ageGroup: _ageGroup,
                 peerAverageSteps: peerAverageSteps,
               ),
               const SizedBox(height: 24),
@@ -70,14 +142,14 @@ class RecordScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              dummyLogs.isEmpty
+              _logs.isEmpty
                   ? _buildEmptyState()
                   : ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: dummyLogs.length,
+                      itemCount: _logs.length,
                       itemBuilder: (context, index) {
-                        final log = dummyLogs[index];
+                        final log = _logs[index];
                         return _buildRecordCard(log);
                       },
                     ),
@@ -90,9 +162,12 @@ class RecordScreen extends StatelessWidget {
 
   Widget _buildPeerBenchmarkCard({
     required int todaySteps,
+    required String ageGroup,
     required int peerAverageSteps,
   }) {
-    const int maxTarget = 8000;
+    final int maxTarget = WalkLogService.currentTargetSteps > peerAverageSteps
+        ? WalkLogService.currentTargetSteps
+        : 8000;
     final double todayProgress = (todaySteps / maxTarget).clamp(0.0, 1.0);
     final double peerProgress = (peerAverageSteps / maxTarget).clamp(0.0, 1.0);
 
@@ -122,9 +197,9 @@ class RecordScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'あなた（今日）',
-                      style: TextStyle(
+                    Text(
+                      '${WalkLogService.currentUserName}（今日）',
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -158,9 +233,12 @@ class RecordScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      '同年代（70代）平均',
-                      style: TextStyle(fontSize: 18, color: Colors.black87),
+                    Text(
+                      '同年代（$ageGroup）平均',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        color: Colors.black87,
+                      ),
                     ),
                     Text(
                       '$peerAverageSteps 歩',
@@ -198,8 +276,8 @@ class RecordScreen extends StatelessWidget {
                   Expanded(
                     child: Text(
                       todaySteps >= peerAverageSteps
-                          ? '平均を超えています！素晴らしいペースです👏'
-                          : '平均まであと ${peerAverageSteps - todaySteps} 歩です！無理せず伸ばしていきましょう😊',
+                          ? '同年代（$ageGroup）の平均を超えています！素晴らしいペースです👏'
+                          : '同年代平均まであと ${peerAverageSteps - todaySteps} 歩です！無理せず伸ばしていきましょう😊',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -217,11 +295,17 @@ class RecordScreen extends StatelessWidget {
   }
 
   Widget _buildRecordCard(Map<String, dynamic> log) {
+    final bool isToday = log['isToday'] == true;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: Colors.white,
+      elevation: isToday ? 2 : 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isToday
+            ? BorderSide(color: Colors.lightBlue.shade400, width: 2)
+            : BorderSide.none,
+      ),
+      color: isToday ? Colors.lightBlue.shade50 : Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

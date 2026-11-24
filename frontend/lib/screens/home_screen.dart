@@ -31,6 +31,38 @@ class _HomeScreenState extends State<HomeScreen> {
   String _userName = WalkLogService.currentUserName;
   late List<WardRanking> _topWards;
   bool _isLoadingRanking = false;
+  int _nudgeIndex = 0;
+
+  /// スライド4枚目「④ 損失回避と利他性をトリガーとする適応型ナッジ」メッセージ生成
+  Map<String, dynamic> _getCurrentNudge() {
+    final remaining = (_targetSteps - _todaySteps).clamp(0, _targetSteps);
+    final nudges = <Map<String, dynamic>>[
+      {
+        'tag': '損失回避ナッジ',
+        'icon': Icons.trending_up,
+        'color': Colors.deepOrange,
+        'bgColor': Colors.orange.shade50,
+        'text': _todaySteps >= _targetSteps
+            ? '🔥 $_userDistrictの達成率が急上昇中！もう500歩でさらに上位の区に迫れます！'
+            : '⚠️ あと $remaining 歩で目標達成！このままだとライバルの区に順位を抜かれてしまいます！',
+      },
+      {
+        'tag': '利他性・連帯ナッジ',
+        'icon': Icons.volunteer_activism,
+        'color': Colors.teal.shade700,
+        'bgColor': Colors.teal.shade50,
+        'text': '🤝 同じ$_userDistrictの仲間も今日歩いています！あなたの1歩が地域の順位アップに直結します！',
+      },
+      {
+        'tag': '同年代比較ナッジ',
+        'icon': Icons.emoji_emotions,
+        'color': Colors.blue.shade700,
+        'bgColor': Colors.blue.shade50,
+        'text': '👏 同年代（${WalkLogService.currentUserAgeGroup}）の仲間と一緒に、無理のないペースで健康寿命を延ばしましょう！',
+      },
+    ];
+    return nudges[_nudgeIndex % nudges.length];
+  }
 
   @override
   void initState() {
@@ -241,12 +273,91 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
+
+                // 1.5 行動経済学ナッジ応援バナー（タップでメッセージパターン切替）
+                Builder(
+                  builder: (context) {
+                    final nudge = _getCurrentNudge();
+                    final Color accent = nudge['color'] as Color;
+                    final Color bg = nudge['bgColor'] as Color;
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _nudgeIndex = (_nudgeIndex + 1) % 3;
+                        });
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: bg,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: accent.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              nudge['icon'] as IconData,
+                              color: accent,
+                              size: 26,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        '💡 本日の応援メッセージ（${nudge['tag']}）',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: accent,
+                                        ),
+                                      ),
+                                      Text(
+                                        'タップで切替 ↻',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    nudge['text'] as String,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 12),
 
                 // 2. 中央のエリア（チームボタン + 23区対抗表彰台 トップ3）
                 Container(
                   width: double.infinity,
-                  height: 175,
+                  height: 190,
                   padding: const EdgeInsets.all(12.0),
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -345,21 +456,21 @@ class _HomeScreenState extends State<HomeScreen> {
                                         _topWards[1].district,
                                         _topWards[1].rank,
                                         _topWards[1].achievementRate,
-                                        68,
+                                        64,
                                       ),
                                     if (_topWards.isNotEmpty)
                                       _buildPodiumBlock(
                                         _topWards[0].district,
                                         _topWards[0].rank,
                                         _topWards[0].achievementRate,
-                                        94,
+                                        86,
                                       ),
                                     if (_topWards.length > 2)
                                       _buildPodiumBlock(
                                         _topWards[2].district,
                                         _topWards[2].rank,
                                         _topWards[2].achievementRate,
-                                        52,
+                                        50,
                                       ),
                                   ],
                                 ),

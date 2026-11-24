@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pedometer/pedometer.dart';
 
 import '../models/walk_log.dart';
 import '../services/walk_log_service.dart';
+import '../services/web_motion_helper.dart';
 import '../theme/app_theme.dart';
 
 class ExerciseScreen extends StatefulWidget {
@@ -18,9 +20,12 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
   final WalkLogService _walkLogService = WalkLogService();
   StreamSubscription<StepCount>? _stepSubscription;
   Timer? _autoSaveDebounce;
+  Timer? _webMotionPollTimer;
 
   int _steps = WalkLogService.currentTodaySteps;
   int? _initialSensorSteps;
+  int _lastWebRawSteps = 0;
+  bool _webSensorActive = false;
   String _status = '歩数センサー初期化中...';
   bool _isSaving = false;
   String _syncStatus = '自動保存モード：有効';
@@ -35,10 +40,18 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
   void dispose() {
     _stepSubscription?.cancel();
     _autoSaveDebounce?.cancel();
+    _webMotionPollTimer?.cancel();
     super.dispose();
   }
 
   Future<void> _initPedometer() async {
+    if (kIsWeb) {
+      setState(() {
+        _status = 'iPhone/スマホの方は下の「スマホセンサーで計測開始」を押してください';
+      });
+      return;
+    }
+
     bool granted = await _walkLogService.requestPermission();
     if (!granted) {
       if (!mounted) return;
@@ -57,13 +70,11 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
       (StepCount event) {
         if (!mounted) return;
         setState(() {
-          // 初回取得時の端末累計歩数を基準として差分を加算
           _initialSensorSteps ??= event.steps - _steps;
           final calculated = event.steps - _initialSensorSteps!;
           _steps = calculated >= 0 ? calculated : event.steps;
           WalkLogService.currentTodaySteps = _steps;
         });
-        // 歩数が変化したら自動でFirestoreへ非同期保存（デバウンス処理付き）
         _scheduleAutoSave();
       },
       onError: (error) {
@@ -73,6 +84,46 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
         });
       },
     );
+  }
+
+  /// iPhone (Safari / LINE) 等の Web モーションセンサーを有効化して歩行カウントを開始
+  Future<void> _enableWebMotionSensor() async {
+    final result = await WebMotionHelper.requestPermission();
+    if (!mounted) return;
+
+    if (result == 'granted') {
+      _lastWebRawSteps = WebMotionHelper.getStepCount();
+      setState(() {
+        _webSensorActive = true;
+        _status = '🟢 iPhoneモーションセンサー計測中！（スマホを持って歩いてください）';
+      });
+
+      _webMotionPollTimer?.cancel();
+      _webMotionPollTimer = Timer.periodic(
+        const Duration(milliseconds: 250),
+        (_) {
+          if (!mounted) return;
+          final currentRaw = WebMotionHelper.getStepCount();
+          final diff = currentRaw - _lastWebRawSteps;
+          if (diff > 0) {
+            _lastWebRawSteps = currentRaw;
+            setState(() {
+              _steps += diff;
+              WalkLogService.currentTodaySteps = _steps;
+            });
+            _scheduleAutoSave();
+          }
+        },
+      );
+    } else if (result == 'denied') {
+      setState(() {
+        _status = '⚠️ モーションセンサーが拒否されました（Safariの再読み込みで再試行可）';
+      });
+    } else {
+      setState(() {
+        _status = '⚠️ モーションセンサーはHTTPS接続時（公開URL）のiPhoneで動作します';
+      });
+    }
   }
 
   /// 歩数が連続で増えた際に通信が集中しないよう、1.5秒後に自動でFirestoreへ保存する
@@ -92,7 +143,6 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
       WalkLogService.currentTodaySteps = _steps;
       _status = 'テストデータ（+$amount歩）適用中';
     });
-    // テスト加算時も自動でFirestoreへ保存
     _scheduleAutoSave();
   }
 
@@ -139,13 +189,12 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final targetSteps = WalkLogService.currentTargetSteps;
     final distanceKm = WalkLog.calculateDistanceKm(_steps);
     final caloriesKcal = WalkLog.calculateCalories(_steps);
     final durationMin = WalkLog.calculateEstimatedMinutes(_steps);
-    final speedMPerMin = WalkLog.calculateSpeedMetersPerMin(
-      distanceKm,
-      durationMin,
-    );
+    final speedMPerMin =
+        WalkLog.calculateSpeedMetersPerMin(distanceKm, durationMin);
 
     return Scaffold(
       appBar: AppBar(title: const Text('運動・歩数計測')),
@@ -154,7 +203,7 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 0. 自動保存ステータスバー（上部に常時わかりやすく表示）
+            // 0. 自動保存ステータスバー
             Container(
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
               decoration: BoxDecoration(
@@ -194,7 +243,43 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
+
+            // ★ iPhone / スマホWeb 用：モーションセンサー起動ボタン
+            if (kIsWeb) ...[
+              ElevatedButton.icon(
+                icon: Icon(
+                  _webSensorActive
+                      ? Icons.sensors
+                      : Icons.phone_iphone,
+                  size: 24,
+                ),
+                label: Text(
+                  _webSensorActive
+                      ? '🟢 iPhoneセンサーでリアルタイム計測中！（歩いてみてください）'
+                      : '📱 スマホ（iPhone）の歩数センサーで計測開始',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _webSensorActive
+                      ? Colors.teal.shade700
+                      : Colors.blue.shade700,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                    horizontal: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: _enableWebMotionSensor,
+              ),
+              const SizedBox(height: 14),
+            ],
 
             // 1. メインの歩数表示カード
             Card(
@@ -203,10 +288,8 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 28,
-                  horizontal: 20,
-                ),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
                 child: Column(
                   children: [
                     const Text(
@@ -243,12 +326,12 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      _steps >= 4000
-                          ? '🎉 本日の目標（4,000歩）を達成しました！'
-                          : '目標 4,000歩 まで あと ${4000 - _steps} 歩',
+                      _steps >= targetSteps
+                          ? '🎉 本日の目標（$targetSteps歩）を達成しました！'
+                          : '目標 $targetSteps歩 まで あと ${targetSteps - _steps} 歩',
                       style: TextStyle(
                         fontSize: 16,
-                        color: _steps >= 4000
+                        color: _steps >= targetSteps
                             ? AppTheme.primaryColor
                             : Colors.grey[700],
                         fontWeight: FontWeight.w600,
@@ -258,7 +341,7 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: LinearProgressIndicator(
-                        value: (_steps / 4000).clamp(0.0, 1.0),
+                        value: (_steps / targetSteps).clamp(0.0, 1.0),
                         minHeight: 14,
                         backgroundColor: Colors.grey[200],
                         valueColor: const AlwaysStoppedAnimation<Color>(
@@ -325,10 +408,8 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
                   Expanded(
                     child: Text(
                       'センサー状態: $_status',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.black87,
-                      ),
+                      style:
+                          const TextStyle(fontSize: 13, color: Colors.black87),
                     ),
                   ),
                 ],
@@ -359,10 +440,8 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
                 Expanded(
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.directions_run),
-                    label: const Text(
-                      '+1,000歩',
-                      style: TextStyle(fontSize: 16),
-                    ),
+                    label:
+                        const Text('+1,000歩', style: TextStyle(fontSize: 16)),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
@@ -389,9 +468,8 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onPressed: _isSaving
-                  ? null
-                  : () => _saveToFirestore(isAuto: false),
+              onPressed:
+                  _isSaving ? null : () => _saveToFirestore(isAuto: false),
             ),
           ],
         ),

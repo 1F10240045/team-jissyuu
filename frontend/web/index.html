@@ -1,46 +1,91 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="シニア向け健康増進プロジェクト 23区対抗WALK">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="frontend">
+  <meta name="apple-mobile-web-app-title" content="23区対抗WALK">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>frontend</title>
+  <title>23区対抗WALK</title>
   <link rel="manifest" href="manifest.json">
+
+  <script>
+    // iPhone (iOS Safari / LINE LIFF WebView) & Android Web 向けの加速度センサー歩数計ブリッジ
+    window._webStepCount = 0;
+    window._webMotionActive = false;
+    window._lastStepTime = 0;
+    window._lastMagnitude = 9.8;
+    window._isPeak = false;
+
+    window._handleDeviceMotion = function(event) {
+      var acc = event.accelerationIncludingGravity;
+      if (!acc || acc.x === null || acc.y === null || acc.z === null) return;
+
+      var mag = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
+      var delta = Math.abs(mag - window._lastMagnitude);
+      window._lastMagnitude = mag;
+
+      var now = Date.now();
+      // 歩行時の加速度変化ピークを検知（誤検知防止のため一歩あたり最低320msの間隔を空ける）
+      if ((mag > 11.8 || delta > 2.4) && !window._isPeak) {
+        if (now - window._lastStepTime > 320) {
+          window._isPeak = true;
+          window._lastStepTime = now;
+          window._webStepCount += 1;
+        }
+      } else if (mag < 10.6 && delta < 1.5) {
+        window._isPeak = false;
+      }
+    };
+
+    window.requestWebMotionPermission = async function() {
+      try {
+        if (typeof DeviceMotionEvent !== 'undefined' &&
+            typeof DeviceMotionEvent.requestPermission === 'function') {
+          // iOS 13+ Safari / WebView のモーション権限ポップアップを表示
+          var permission = await DeviceMotionEvent.requestPermission();
+          if (permission === 'granted') {
+            if (!window._webMotionActive) {
+              window.addEventListener('devicemotion', window._handleDeviceMotion, true);
+              window._webMotionActive = true;
+            }
+            return 'granted';
+          } else {
+            return 'denied';
+          }
+        } else if (typeof DeviceMotionEvent !== 'undefined') {
+          // Android Chrome 等（requestPermission不要で即利用可能）
+          if (!window._webMotionActive) {
+            window.addEventListener('devicemotion', window._handleDeviceMotion, true);
+            window._webMotionActive = true;
+          }
+          return 'granted';
+        } else {
+          return 'unsupported';
+        }
+      } catch (e) {
+        console.error('Motion permission error:', e);
+        return 'error:' + e.message;
+      }
+    };
+
+    window.getWebStepCount = function() {
+      return window._webStepCount || 0;
+    };
+  </script>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

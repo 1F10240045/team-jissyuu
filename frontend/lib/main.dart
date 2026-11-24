@@ -22,10 +22,7 @@ void main() async {
 
   // デバッグ実行時のみローカルエミュレータに接続
   if (kDebugMode) {
-    // Auth エミュレータへの接続 (localhost:9099)
     await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
-
-    // Firestore エミュレータへの接続 (localhost:8080)
     FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
   }
 
@@ -35,14 +32,49 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  /// シニア向け文字サイズ倍率（1.0: 標準, 1.15: 大, 1.3: 特大）
+  static final ValueNotifier<double> fontScaleNotifier =
+      ValueNotifier<double>(1.15); // デフォルトでシニアに見やすい「大(1.15倍)」に設定
+
+  static String get fontScaleLabel {
+    final s = fontScaleNotifier.value;
+    if (s >= 1.25) return '特大';
+    if (s >= 1.1) return '大';
+    return '標準';
+  }
+
+  static void cycleFontScale() {
+    final s = fontScaleNotifier.value;
+    if (s < 1.1) {
+      fontScaleNotifier.value = 1.15; // 大
+    } else if (s < 1.25) {
+      fontScaleNotifier.value = 1.3; // 特大
+    } else {
+      fontScaleNotifier.value = 1.0; // 標準
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'チーム実習アプリ',
-      theme: AppTheme.lightTheme,
-      // アプリの起動画面として HomeScreen を指定
-      home: const HomeScreen(),
+    return ValueListenableBuilder<double>(
+      valueListenable: fontScaleNotifier,
+      builder: (context, scale, _) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: '23区対抗WALK',
+          theme: AppTheme.lightTheme,
+          builder: (context, child) {
+            final mediaQuery = MediaQuery.of(context);
+            return MediaQuery(
+              data: mediaQuery.copyWith(
+                textScaler: TextScaler.linear(scale),
+              ),
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
+          home: const HomeScreen(),
+        );
+      },
     );
   }
 }

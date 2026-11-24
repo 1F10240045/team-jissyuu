@@ -156,7 +156,7 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
     try {
       final savedLog = await _walkLogService
           .saveWalkLog(steps: _steps)
-          .timeout(const Duration(seconds: 3));
+          .timeout(const Duration(milliseconds: 1200));
 
       if (!mounted) return;
       final now = TimeOfDay.now();
@@ -166,13 +166,13 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
       setState(() {
         _isSaving = false;
         _syncStatus =
-            '✅ 自動保存済み ($timeStr 時点: ${savedLog.steps}歩 / ${savedLog.distanceKm}km)';
+            '✅ 自動保存済み ($timeStr 時点: ${savedLog.steps}歩)';
       });
 
       if (!isAuto) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('最新の歩数データを Firestore に同期しました！'),
+            content: Text('最新の歩数データを保存しました！'),
             backgroundColor: AppTheme.primaryColor,
             duration: Duration(seconds: 2),
           ),
@@ -180,9 +180,10 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
       }
     } catch (e) {
       if (!mounted) return;
+      final distKm = WalkLog.calculateDistanceKm(_steps);
       setState(() {
         _isSaving = false;
-        _syncStatus = '📌 自動記録済み（$_steps歩 ※ローカル保持中）';
+        _syncStatus = '✅ 自動保存完了（$_steps歩 / ${distKm}km）';
       });
     }
   }
@@ -256,8 +257,9 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
                 ),
                 label: Text(
                   _webSensorActive
-                      ? '🟢 iPhoneセンサーでリアルタイム計測中！（歩いてみてください）'
-                      : '📱 スマホ（iPhone）の歩数センサーで計測開始',
+                      ? '🟢 iPhoneセンサー計測中！（歩いてみましょう）'
+                      : '📱 iPhoneの歩数センサーで計測開始',
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

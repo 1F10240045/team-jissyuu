@@ -10,8 +10,12 @@ class WalkLogService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // アプリ内で共有する本日の最新歩数（画面遷移しても保持されるようにキャッシュ）
+  // アプリ内で共有する本日の最新歩数とプロフィール設定（画面遷移しても保持されるようにキャッシュ）
   static int currentTodaySteps = 0;
+  static String currentUserName = dummyUserProfile.displayName;
+  static String currentUserDistrict = dummyUserProfile.district;
+  static String currentUserAgeGroup = '70代';
+  static int currentTargetSteps = dummyUserProfile.targetSteps;
 
   // 歩数ストリームの取得
   Stream<StepCount> get stepCountStream => Pedometer.stepCountStream;

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -5,7 +6,9 @@ import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../constants/dummy_data.dart';
+import '../models/team.dart';
 import '../models/walk_log.dart';
+import 'ranking_service.dart';
 import 'web_motion_helper.dart';
 
 class WalkLogService {
@@ -20,10 +23,44 @@ class WalkLogService {
   static int currentTargetSteps = dummyUserProfile.targetSteps;
   static double? currentUserHeightCm;
   static double currentGpsDistanceMeters = 0.0;
+  static String currentTeamId = 'team_001'; // 現在参加中のチームID（未参加時は ''）
   static bool _initializedFromStorage = false;
 
+  /// フレンド一覧（フレンド画面とランキング画面の「フレンド・メンバー」タブで完全共有＆localStorage保存）
+  static List<Map<String, dynamic>> sharedFriendsList = [
+    {
+      'id': 'hanako-11',
+      'name': 'すずき はなこ',
+      'district': '世田谷区',
+      'steps': 7400,
+      'isOnline': true,
+      'cheered': false,
+      'lastMessage': '',
+    },
+    {
+      'id': 'satoru-12',
+      'name': 'たなか さとる',
+      'district': '練馬区',
+      'steps': 8200,
+      'isOnline': false,
+      'cheered': false,
+      'lastMessage': '',
+    },
+    {
+      'id': 'ichiro-13',
+      'name': 'やまだ いちろう',
+      'district': '大田区',
+      'steps': 4900,
+      'isOnline': true,
+      'cheered': false,
+      'lastMessage': '',
+    },
+  ];
+
+  /// チーム一覧（新規作成や参加状態もlocalStorageに自動保存）
+  static List<Team> sharedTeamsList = List<Team>.from(initialTeams);
+
   /// アプリ起動時にスマホ本体（ブラウザのlocalStorage）から前回の状態を自動復元
-  /// 初回起動時はそのスマホ専用のフレンドID（walk-XXXX）を自動発行して記憶する
   static void initFromLocalStorage() {
     if (_initializedFromStorage) return;
     _initializedFromStorage = true;
@@ -40,7 +77,9 @@ class WalkLogService {
     if (savedName.isNotEmpty) currentUserName = savedName;
 
     final savedDistrict = WebMotionHelper.loadLocalData('userDistrict');
-    if (savedDistrict.isNotEmpty) currentUserDistrict = savedDistrict;
+    if (savedDistrict.isNotEmpty && tokyo23Wards.contains(savedDistrict)) {
+      currentUserDistrict = savedDistrict;
+    }
 
     final savedAge = WebMotionHelper.loadLocalData('userAgeGroup');
     if (savedAge.isNotEmpty) currentUserAgeGroup = savedAge;
@@ -73,6 +112,44 @@ class WalkLogService {
       currentGpsDistanceMeters = savedGps;
     }
 
+    final savedTeamId = WebMotionHelper.loadLocalData('teamId');
+    if (savedTeamId.isNotEmpty) {
+      currentTeamId = savedTeamId == '__none__' ? '' : savedTeamId;
+    }
+
+    // フレンドリストの復元
+    final savedFriendsJson = WebMotionHelper.loadLocalData('friendsJson');
+    if (savedFriendsJson.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(savedFriendsJson) as List<dynamic>;
+        sharedFriendsList = decoded
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+      } catch (_) {}
+    }
+
+    // チームリストの復元
+    final savedTeamsJson = WebMotionHelper.loadLocalData('teamsJson');
+    if (savedTeamsJson.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(savedTeamsJson) as List<dynamic>;
+        sharedTeamsList = decoded.map((e) {
+          final m = Map<String, dynamic>.from(e as Map);
+          return Team(
+            teamId: (m['teamId'] ?? '').toString(),
+            name: (m['name'] ?? '').toString(),
+            district: (m['district'] ?? '渋谷区').toString(),
+            description: (m['description'] ?? '').toString(),
+            managerUserId: (m['managerUserId'] ?? '').toString(),
+            memberCount: (m['memberCount'] as num?)?.toInt() ?? 1,
+            totalSteps: (m['totalSteps'] as num?)?.toInt() ?? 0,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+        }).toList();
+      } catch (_) {}
+    }
+
     upsertRegisteredAccount({
       'accountId': currentAccountId,
       'name': currentUserName,
@@ -84,7 +161,7 @@ class WalkLogService {
     });
   }
 
-  /// 現在のプロフィール・歩数状態をスマホ本体（localStorage）へ即座に自動保存
+  /// 現在のプロフィール・歩数・フレンド・チーム状態をスマホ本体（localStorage）へ即座に自動保存
   static void persistToLocalStorage() {
     WebMotionHelper.saveLocalData('accountId', currentAccountId);
     WebMotionHelper.saveLocalData('userName', currentUserName);
@@ -100,6 +177,34 @@ class WalkLogService {
       'gpsMeters',
       currentGpsDistanceMeters.toString(),
     );
+    WebMotionHelper.saveLocalData(
+      'teamId',
+      currentTeamId.isEmpty ? '__none__' : currentTeamId,
+    );
+
+    try {
+      WebMotionHelper.saveLocalData(
+        'friendsJson',
+        jsonEncode(sharedFriendsList),
+      );
+      final teamsSerializable = sharedTeamsList
+          .map(
+            (t) => {
+              'teamId': t.teamId,
+              'name': t.name,
+              'district': t.district,
+              'description': t.description,
+              'managerUserId': t.managerUserId,
+              'memberCount': t.memberCount,
+              'totalSteps': t.totalSteps,
+            },
+          )
+          .toList();
+      WebMotionHelper.saveLocalData(
+        'teamsJson',
+        jsonEncode(teamsSerializable),
+      );
+    } catch (_) {}
 
     upsertRegisteredAccount({
       'accountId': currentAccountId,
@@ -110,6 +215,60 @@ class WalkLogService {
       'heightCm': currentUserHeightCm,
       'steps': currentTodaySteps,
     });
+  }
+
+  /// ホーム画面の表彰台とランキング画面で共通使用するリアルタイム23区ランキング計算
+  static List<WardRanking> computeRealtimeWardRankings() {
+    final mySteps = currentTodaySteps;
+    final myDistrict = currentUserDistrict;
+    final rawList = <WardRanking>[];
+
+    for (final raw in initialDistrictRankings) {
+      final item = raw as Map<String, dynamic>;
+      final district = item['district'] as String;
+      final isMyWard = district == myDistrict;
+
+      final baseSteps = (item['totalSteps'] as num).toInt();
+      final baseDist = (item['totalDistanceKm'] as num).toDouble();
+      final baseRate = (item['achievementRate'] as num).toDouble();
+
+      final addedSteps = isMyWard ? mySteps : 0;
+      final addedDist = isMyWard ? WalkLog.calculateDistanceKm(mySteps) : 0.0;
+      // 自分が歩くと自分の区の達成率も上昇する連動ロジック
+      final addedRate = isMyWard
+          ? (mySteps / (currentTargetSteps > 0 ? currentTargetSteps : 8000)) *
+                2.5
+          : 0.0;
+
+      rawList.add(
+        WardRanking(
+          rank: 0,
+          district: district,
+          achievementRate: (baseRate + addedRate).clamp(0.0, 100.0),
+          totalSteps: baseSteps + addedSteps,
+          totalDistanceKm: baseDist + addedDist,
+          participantCount: isMyWard ? 25 : 20,
+        ),
+      );
+    }
+
+    rawList.sort((a, b) {
+      final cmp = b.achievementRate.compareTo(a.achievementRate);
+      if (cmp != 0) return cmp;
+      return b.totalSteps.compareTo(a.totalSteps);
+    });
+
+    return [
+      for (var i = 0; i < rawList.length; i++)
+        WardRanking(
+          rank: i + 1,
+          district: rawList[i].district,
+          achievementRate: rawList[i].achievementRate,
+          totalSteps: rawList[i].totalSteps,
+          totalDistanceKm: rawList[i].totalDistanceKm,
+          participantCount: rawList[i].participantCount,
+        ),
+    ];
   }
 
   /// システムに登録されている実在ユーザーアカウント台帳
@@ -250,10 +409,8 @@ class WalkLogService {
     }
   }
 
-  // 歩数ストリームの取得
   Stream<StepCount> get stepCountStream => Pedometer.stepCountStream;
 
-  // 権限リクエスト
   Future<bool> requestPermission() async {
     try {
       PermissionStatus status = await Permission.activityRecognition.request();
@@ -278,7 +435,6 @@ class WalkLogService {
     return '$y-$m-$d';
   }
 
-  /// 歩数ログをスマホ本体（localStorage）と Firestore の両方へ自動保存
   Future<WalkLog> saveWalkLog({
     required int steps,
     int? actualSeconds,
@@ -307,7 +463,7 @@ class WalkLogService {
     final walkLog = WalkLog(
       walkLogId: docId,
       userId: userId,
-      teamId: dummyUserProfile.teamId,
+      teamId: currentTeamId.isEmpty ? null : currentTeamId,
       district: userDistrict,
       date: dateStr,
       steps: steps,
@@ -332,7 +488,7 @@ class WalkLogService {
       'ageGroup': currentUserAgeGroup,
       'targetSteps': currentTargetSteps,
       'heightCm': currentUserHeightCm,
-      'teamId': dummyUserProfile.teamId,
+      'teamId': currentTeamId.isEmpty ? null : currentTeamId,
       'todaySteps': steps,
       'totalSteps': dummyUserProfile.totalSteps + steps,
       'totalDistanceKm': double.parse(

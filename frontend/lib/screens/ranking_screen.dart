@@ -64,66 +64,21 @@ class _RankingScreenState extends State<RankingScreen> {
       // エミュレータ未接続時はシードデータ＋本日の自分の歩数を統合
     }
 
-    // 2. 23区ランキングの構築（シードデータに自分の本日の歩数・達成度を加算して再ソート）
+    // 2. 23区ランキングの構築（ホーム画面の表彰台と完全連動）
     if (resolvedWards.isEmpty) {
-      final rawList = <WardRanking>[];
-      for (final raw in initialDistrictRankings) {
-        final item = raw as Map<String, dynamic>;
-        final district = item['district'] as String;
-        final isMyWard = district == myDistrict;
-
-        final baseSteps = (item['totalSteps'] as num).toInt();
-        final baseDist = (item['totalDistanceKm'] as num).toDouble();
-        final baseRate = (item['achievementRate'] as num).toDouble();
-
-        final addedSteps = isMyWard ? mySteps : 0;
-        final addedDist = isMyWard ? WalkLog.calculateDistanceKm(mySteps) : 0.0;
-        // 自分が歩くと自分の区の達成率も少しずつ上昇する連動演出
-        final addedRate = isMyWard
-            ? (mySteps / WalkLogService.currentTargetSteps) * 2.5
-            : 0.0;
-
-        rawList.add(
-          WardRanking(
-            rank: 0,
-            district: district,
-            achievementRate: (baseRate + addedRate).clamp(0.0, 100.0),
-            totalSteps: baseSteps + addedSteps,
-            totalDistanceKm: baseDist + addedDist,
-            participantCount: isMyWard ? 25 : 20,
-          ),
-        );
-      }
-
-      rawList.sort((a, b) {
-        final cmp = b.achievementRate.compareTo(a.achievementRate);
-        if (cmp != 0) return cmp;
-        return b.totalSteps.compareTo(a.totalSteps);
-      });
-
-      resolvedWards = [
-        for (var i = 0; i < rawList.length; i++)
-          WardRanking(
-            rank: i + 1,
-            district: rawList[i].district,
-            achievementRate: rawList[i].achievementRate,
-            totalSteps: rawList[i].totalSteps,
-            totalDistanceKm: rawList[i].totalDistanceKm,
-            participantCount: rawList[i].participantCount,
-          ),
-      ];
+      resolvedWards = WalkLogService.computeRealtimeWardRankings();
     }
 
-    // 3. フレンド・メンバーランキングの構築（自分の最新歩数を入れてリアルタイム順位ソート）
+    // 3. フレンド・メンバーランキングの構築（フレンド画面の友達リスト＋自分の最新歩数を完全連動）
     if (resolvedMembers.isEmpty) {
       final tempMembers = <MemberRanking>[
-        for (final raw in sampleSeniorUsers)
+        for (final friend in WalkLogService.sharedFriendsList)
           MemberRanking(
             rank: 0,
-            userId: (raw as Map<String, dynamic>)['userId'] as String,
-            name: raw['name'] as String,
-            district: raw['district'] as String,
-            steps: (raw['todaySteps'] as num).toInt(),
+            userId: (friend['id'] ?? '').toString(),
+            name: (friend['name'] ?? '').toString(),
+            district: (friend['district'] ?? '世田谷区').toString(),
+            steps: (friend['steps'] as num?)?.toInt() ?? 0,
           ),
         MemberRanking(
           rank: 0,

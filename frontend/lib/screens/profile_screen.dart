@@ -82,6 +82,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return parsed;
   }
 
+  /// 身長の入力エラーメッセージ（空欄または100〜220cmなら null）
+  String? _getHeightValidationError() {
+    final text = _heightController.text.trim();
+    if (text.isEmpty) return null;
+    final parsed = double.tryParse(text);
+    if (parsed == null) {
+      return '⚠️ 数字（半角）で入力してください（または空欄）';
+    }
+    if (parsed < 100 || parsed > 220) {
+      return '⚠️ 100〜220 cm の範囲で入力してください（または空欄）';
+    }
+    return null;
+  }
+
   /// 入力や選択が変わるたびに、ボタン不要でスマホ本体（localStorage）へ即座に自動保存
   void _autoSaveLocal() {
     final newName = _nameController.text.trim().isEmpty
@@ -230,14 +244,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 18),
 
-            // 名前入力欄（入力するだけで自動保存）
+            // 名前入力欄（入力するだけで自動保存・最大12文字制限）
             const Text(
-              '名前（ニックネーム）',
+              '名前（ニックネーム・12文字以内）',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             TextField(
               controller: _nameController,
+              maxLength: 12,
               onChanged: (_) => _autoSaveLocal(),
               decoration: const InputDecoration(
                 hintText: '例: たろう（入力すると自動で保存されます）',
@@ -299,7 +314,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 18),
 
-            // 身長（任意入力・空欄でもOK）
+            // 身長（任意入力・空欄でもOK・100〜220cmバリデーション付き）
             const Text(
               '身長（任意・空欄でもOK）',
               style: TextStyle(fontWeight: FontWeight.bold),
@@ -308,6 +323,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             TextField(
               controller: _heightController,
               keyboardType: TextInputType.number,
+              maxLength: 3,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               onChanged: (_) {
                 setState(() {});
                 _autoSaveLocal();
@@ -315,6 +332,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               decoration: InputDecoration(
                 hintText: '未入力時は年代平均から歩幅を自動計算（例: 160）',
                 suffixText: 'cm',
+                counterText: '',
+                errorText: _getHeightValidationError(),
                 border: const OutlineInputBorder(),
                 suffixIcon: _heightController.text.isNotEmpty
                     ? IconButton(

@@ -416,7 +416,7 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      '距離算出: 1歩 約${strideCm}cm（$heightInfo）＋歩行中GPSハイブリッド（電車・車移動は自動除外）',
+                      '距離算出: 1歩 約${strideCm}cm（$heightInfo）＋歩行・ランニングGPSハイブリッド（時速18km超の電車・車は自動除外）',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,

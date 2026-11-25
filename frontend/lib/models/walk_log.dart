@@ -78,12 +78,11 @@ class WalkLog {
     final activeGpsMeters =
         gpsMeters ?? WalkLogService.currentGpsDistanceMeters;
 
-    // 歩行中にGPS実測距離が計測されており、かつ妥当な範囲（歩幅換算の0.5倍〜1.6倍以内）ならGPS実測を優先し、
+    // 歩行・ランニング中にGPS実測距離が計測されており、かつ妥当な範囲（歩幅換算の2.2倍＝ランニング時のストライド拡大まで許容）ならGPS実測を優先し、
     // 室内歩行やテスト加算分の歩数は歩幅換算でハイブリッド合算する
     double totalMeters = strideBasedMeters;
     if (activeGpsMeters >= 5.0 && steps > 0) {
-      // GPSで実測された歩数分と、室内/テスト分の差分を滑らかに統合
-      if (activeGpsMeters <= strideBasedMeters * 1.6) {
+      if (activeGpsMeters <= strideBasedMeters * 2.2) {
         totalMeters = activeGpsMeters > strideBasedMeters
             ? activeGpsMeters
             : strideBasedMeters;

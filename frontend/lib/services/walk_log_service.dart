@@ -16,6 +16,8 @@ class WalkLogService {
   static String currentUserDistrict = dummyUserProfile.district;
   static String currentUserAgeGroup = '70代';
   static int currentTargetSteps = dummyUserProfile.targetSteps;
+  static double? currentUserHeightCm; // 任意入力の身長(cm)。未入力時は null で年代別標準歩幅を使用
+  static double currentGpsDistanceMeters = 0.0; // 歩行中のみ加算されるGPS実測距離(m)
 
   // 歩数ストリームの取得
   Stream<StepCount> get stepCountStream => Pedometer.stepCountStream;

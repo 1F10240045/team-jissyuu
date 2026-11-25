@@ -104,12 +104,17 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
         (_) {
           if (!mounted) return;
           final currentRaw = WebMotionHelper.getStepCount();
+          final gpsMeters = WebMotionHelper.getGpsDistanceMeters();
           final diff = currentRaw - _lastWebRawSteps;
-          if (diff > 0) {
+          final gpsChanged =
+              (gpsMeters - WalkLogService.currentGpsDistanceMeters).abs() >= 1.0;
+
+          if (diff > 0 || gpsChanged) {
             _lastWebRawSteps = currentRaw;
             setState(() {
-              _steps += diff;
+              if (diff > 0) _steps += diff;
               WalkLogService.currentTodaySteps = _steps;
+              WalkLogService.currentGpsDistanceMeters = gpsMeters;
             });
             _scheduleAutoSave();
           }
@@ -194,8 +199,10 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
     final distanceKm = WalkLog.calculateDistanceKm(_steps);
     final caloriesKcal = WalkLog.calculateCalories(_steps);
     final durationMin = WalkLog.calculateEstimatedMinutes(_steps);
-    final speedMPerMin =
-        WalkLog.calculateSpeedMetersPerMin(distanceKm, durationMin);
+    final strideCm = (WalkLog.calculateStrideMeters() * 100).round();
+    final heightInfo = WalkLogService.currentUserHeightCm != null
+        ? '${WalkLogService.currentUserAgeGroup}・身長${WalkLogService.currentUserHeightCm!.toInt()}cm'
+        : '${WalkLogService.currentUserAgeGroup}平均';
 
     return Scaffold(
       appBar: AppBar(title: const Text('運動・歩数計測')),
@@ -383,14 +390,42 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: _buildStatCard(
-                    icon: Icons.speed,
-                    label: '歩く速さ',
-                    value: '$speedMPerMin',
-                    unit: 'm/分',
+                    icon: Icons.timer,
+                    label: '歩いた時間',
+                    value: '$durationMin',
+                    unit: '分',
                     color: Colors.teal,
                   ),
                 ),
               ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // 歩幅＆歩行中限定GPSハイブリッド距離算出の説明バッジ
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.straighten, color: Colors.blue.shade700, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '距離算出: 1歩 約${strideCm}cm（$heightInfo）＋歩行中GPSハイブリッド（電車・車移動は自動除外）',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
 
             const SizedBox(height: 16),

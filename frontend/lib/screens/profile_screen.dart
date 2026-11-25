@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/walk_log.dart';
 import '../services/seed_service.dart';
 import '../services/walk_log_service.dart';
 import '../theme/app_theme.dart';
@@ -14,6 +15,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _heightController = TextEditingController();
 
   // 東京都23区リスト
   final List<String> _districts = [
@@ -59,8 +61,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    // 初期値として現在のキャッシュ値をセット
     _nameController.text = WalkLogService.currentUserName;
+    if (WalkLogService.currentUserHeightCm != null) {
+      _heightController.text =
+          WalkLogService.currentUserHeightCm!.toStringAsFixed(0);
+    }
     _selectedDistrict = _districts.contains(WalkLogService.currentUserDistrict)
         ? WalkLogService.currentUserDistrict
         : '渋谷区';
@@ -74,7 +79,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _initializeAndLoadData();
   }
 
-  // 1. 匿名ログイン & 既存プロフィールの読み込み（タイムアウト付きでグルグル防止）
   Future<void> _initializeAndLoadData() async {
     try {
       final userCredential = await FirebaseAuth.instance
@@ -100,6 +104,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           final district = data['district'] as String?;
           final ageGroup = data['ageGroup'] as String?;
           final targetSteps = (data['targetSteps'] as num?)?.toInt();
+          final heightCm = (data['heightCm'] as num?)?.toDouble();
 
           if (mounted) {
             setState(() {
@@ -119,6 +124,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _selectedTargetSteps = targetSteps;
                 WalkLogService.currentTargetSteps = targetSteps;
               }
+              if (heightCm != null && heightCm >= 100 && heightCm <= 220) {
+                _heightController.text = heightCm.toStringAsFixed(0);
+                WalkLogService.currentUserHeightCm = heightCm;
+              }
             });
           }
         }
@@ -134,7 +143,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // 2. Firestoreおよびアプリ内キャッシュへの保存処理
+  /// 現在入力中の身長（空欄や範囲外の場合は null）
+  double? _parseOptionalHeight() {
+    final text = _heightController.text.trim();
+    if (text.isEmpty) return null;
+    final parsed = double.tryParse(text);
+    if (parsed == null || parsed < 100 || parsed > 220) return null;
+    return parsed;
+  }
+
   Future<void> _saveProfile() async {
     if (_userId == null) return;
 
@@ -144,12 +161,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final newDistrict = _selectedDistrict ?? '渋谷区';
     final newAge = _selectedAgeGroup ?? '70代';
     final newTarget = _selectedTargetSteps;
+    final newHeight = _parseOptionalHeight();
 
-    // アプリ内の共通キャッシュを即座に更新（ホーム画面等へ即時反映）
+    // アプリ内の共通キャッシュを即座に更新（空欄の場合は null で年代別標準歩幅を使用）
     WalkLogService.currentUserName = newName;
     WalkLogService.currentUserDistrict = newDistrict;
     WalkLogService.currentUserAgeGroup = newAge;
     WalkLogService.currentTargetSteps = newTarget;
+    WalkLogService.currentUserHeightCm = newHeight;
 
     setState(() {
       _isSaving = true;
@@ -165,6 +184,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             'district': newDistrict,
             'ageGroup': newAge,
             'targetSteps': newTarget,
+            'heightCm': newHeight,
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true))
           .timeout(const Duration(seconds: 2));
@@ -183,7 +203,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('プロフィールを設定しました！（アプリ内に反映済み）'),
+            content: Text('プロフィールを設定しました！（歩幅・目標をアプリ内に反映済み）'),
             backgroundColor: AppTheme.primaryColor,
             duration: Duration(seconds: 2),
           ),
@@ -201,11 +221,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _heightController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final previewHeight = _parseOptionalHeight();
+    final previewStrideCm = (WalkLog.calculateStrideMeters(
+              ageGroup: _selectedAgeGroup ?? '70代',
+              heightCm: previewHeight,
+            ) *
+            100)
+        .round();
+
     return Scaffold(
       appBar: AppBar(title: const Text('プロフィール設定')),
       body: _isLoading
@@ -228,7 +257,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       border: OutlineInputBorder(),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
                   // 所属区選択 (Dropdown)
                   const Text(
@@ -254,7 +283,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       });
                     },
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
                   // 年代選択 (ChoiceChip)
                   const Text(
@@ -277,7 +306,69 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       );
                     }).toList(),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
+
+                  // ★ 身長（任意入力・空欄でもOK）
+                  const Text(
+                    '身長（任意・空欄でもOK）',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _heightController,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: '未入力時は年代平均から歩幅を自動計算（例: 160）',
+                      suffixText: 'cm',
+                      border: const OutlineInputBorder(),
+                      suffixIcon: _heightController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              tooltip: '空欄に戻す',
+                              onPressed: () {
+                                setState(() {
+                                  _heightController.clear();
+                                });
+                              },
+                            )
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.straighten,
+                          size: 18,
+                          color: AppTheme.primaryColor,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            previewHeight != null
+                                ? 'あなたの推定歩幅: 約 $previewStrideCm cm（${_selectedAgeGroup ?? '70代'} × 身長${previewHeight.toInt()}cm）'
+                                : 'あなたの推定歩幅: 約 $previewStrideCm cm（${_selectedAgeGroup ?? '70代'}の標準歩幅を自動適用）',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
 
                   // 1日の目標歩数 (ChoiceChip)
                   const Text(
@@ -302,7 +393,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       );
                     }).toList(),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 28),
 
                   // 保存ボタン
                   SizedBox(

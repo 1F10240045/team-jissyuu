@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/walk_log_service.dart';
 
 /// 歩行ログのデータモデル（Firestore の `walkLogs` コレクションに対応）
 class WalkLog {
@@ -28,9 +29,68 @@ class WalkLog {
     required this.createdAt,
   });
 
-  /// 歩数から距離(km)を計算（1歩あたり約0.7m想定）
-  static double calculateDistanceKm(int steps) {
-    return double.parse((steps * 0.0007).toStringAsFixed(2));
+  /// 年代と身長（任意入力）から1歩あたりの歩幅（メートル）を算出
+  /// - 身長が入力されている場合: 身長(m) × 0.45 × 年代別歩幅維持係数
+  /// - 身長が未入力(null)の場合: 年代ごとの標準歩幅（50代:72cm, 60代:68cm, 70代:62cm, 80代:55cm, 90代+:48cm）
+  static double calculateStrideMeters({String? ageGroup, double? heightCm}) {
+    final age = ageGroup ?? WalkLogService.currentUserAgeGroup;
+    final height = heightCm ?? WalkLogService.currentUserHeightCm;
+
+    // 年代別の歩幅維持係数（若年・50代を1.0とした場合のシニア年代別係数）
+    final Map<String, double> ageFactorMap = {
+      '50代': 1.00,
+      '60代': 0.94,
+      '70代': 0.86,
+      '80代': 0.76,
+      '90代+': 0.67,
+    };
+
+    // 身長未入力時の年代別デフォルト歩幅（メートル）
+    final Map<String, double> defaultStrideByAge = {
+      '50代': 0.72,
+      '60代': 0.68,
+      '70代': 0.62,
+      '80代': 0.55,
+      '90代+': 0.48,
+    };
+
+    if (height != null && height >= 100 && height <= 220) {
+      final baseStride = (height / 100.0) * 0.45;
+      final factor = ageFactorMap[age] ?? 0.86;
+      return double.parse((baseStride * factor).toStringAsFixed(3));
+    }
+
+    return defaultStrideByAge[age] ?? 0.62;
+  }
+
+  /// 歩数＋年代・身長別歩幅＋歩行中GPS実測のハイブリッド距離(km)を計算
+  static double calculateDistanceKm(
+    int steps, {
+    String? ageGroup,
+    double? heightCm,
+    double? gpsMeters,
+  }) {
+    final strideM = calculateStrideMeters(
+      ageGroup: ageGroup,
+      heightCm: heightCm,
+    );
+    final strideBasedMeters = steps * strideM;
+    final activeGpsMeters =
+        gpsMeters ?? WalkLogService.currentGpsDistanceMeters;
+
+    // 歩行中にGPS実測距離が計測されており、かつ妥当な範囲（歩幅換算の0.5倍〜1.6倍以内）ならGPS実測を優先し、
+    // 室内歩行やテスト加算分の歩数は歩幅換算でハイブリッド合算する
+    double totalMeters = strideBasedMeters;
+    if (activeGpsMeters >= 5.0 && steps > 0) {
+      // GPSで実測された歩数分と、室内/テスト分の差分を滑らかに統合
+      if (activeGpsMeters <= strideBasedMeters * 1.6) {
+        totalMeters = activeGpsMeters > strideBasedMeters
+            ? activeGpsMeters
+            : strideBasedMeters;
+      }
+    }
+
+    return double.parse((totalMeters / 1000.0).toStringAsFixed(2));
   }
 
   /// 歩数から消費カロリー(kcal)を計算（1歩あたり約0.04kcal想定）

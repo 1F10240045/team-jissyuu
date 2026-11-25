@@ -67,14 +67,14 @@
               );
               var dtSec = (now - window._lastGpsTime) / 1000.0;
 
-              // ★ 乗り物除外フィルター：
-              // ① 直近8秒以内に実際に歩数センサーが歩行をカウントしていること（電車・車での着座移動を除外）
-              // ② 移動速度が秒速2.3m（約時速8.3km＝早歩き上限）以下であること
+              // ★ 乗り物除外フィルター（ウォーキング＆ランニング両対応）：
+              // ① 直近8秒以内に実際に歩数センサーが歩行・走行の着地振動をカウントしていること（電車・車での移動を除外）
+              // ② 移動速度が秒速5.0m（時速18.0km＝元気なシニアのランニング・ジョギング上限）以下であること
               // ③ 1m以上の有意な移動であること（静止時のGPS揺らぎを除外）
-              var isCurrentlyWalking = (now - window._lastStepTime) <= 8000;
+              var isCurrentlyMovingOnFoot = (now - window._lastStepTime) <= 8000;
               var speedMps = dtSec > 0 ? (distM / dtSec) : 0;
 
-              if (isCurrentlyWalking && distM >= 1.0 && speedMps <= 2.3) {
+              if (isCurrentlyMovingOnFoot && distM >= 1.0 && speedMps <= 5.0) {
                 window._webGpsDistanceMeters += distM;
               }
             }
@@ -100,9 +100,9 @@
       window._lastMagnitude = mag;
 
       var now = Date.now();
-      // 歩行時の加速度変化ピークを検知（一歩あたり最低320msの間隔）
+      // 歩行・ランニング時の加速度変化ピークを検知（ハイピッチなランニングも拾えるよう最小間隔を230msに設定）
       if ((mag > 11.8 || delta > 2.4) && !window._isPeak) {
-        if (now - window._lastStepTime > 320) {
+        if (now - window._lastStepTime > 230) {
           window._isPeak = true;
           window._lastStepTime = now;
           window._webStepCount += 1;

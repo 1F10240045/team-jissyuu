@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/walk_log.dart';
-import '../services/seed_service.dart';
 import '../services/walk_log_service.dart';
 import '../theme/app_theme.dart';
 
@@ -392,7 +391,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 24),
 
-            // 保存してホームへ戻るボタン
+            // 保存ボタン
             SizedBox(
               width: double.infinity,
               height: 48,
@@ -410,35 +409,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
-            ),
-
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              height: 44,
-              child: OutlinedButton.icon(
-                onPressed: _isSaving
-                    ? null
-                    : () async {
-                        setState(() => _isSaving = true);
-                        try {
-                          await SeedService.seedInitialData().timeout(
-                            const Duration(seconds: 2),
-                          );
-                        } catch (_) {}
-                        if (mounted) {
-                          setState(() => _isSaving = false);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('初期データを準備しました'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                        }
-                      },
-                icon: const Icon(Icons.cloud_upload),
-                label: const Text('初期データ投入（デモ用）'),
               ),
             ),
           ],

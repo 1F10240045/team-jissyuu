@@ -12,36 +12,9 @@ class FriendScreen extends StatefulWidget {
 }
 
 class _FriendScreenState extends State<FriendScreen> {
-  // 現在登録済みのフレンドリスト（実在するアカウントIDと紐付け）
-  static final List<Map<String, dynamic>> _sharedFriendsList = [
-    {
-      'id': 'hanako-11',
-      'name': 'すずき はなこ',
-      'district': '世田谷区',
-      'steps': 7400,
-      'isOnline': true,
-      'cheered': false,
-      'lastMessage': '',
-    },
-    {
-      'id': 'satoru-12',
-      'name': 'たなか さとる',
-      'district': '練馬区',
-      'steps': 8200,
-      'isOnline': false,
-      'cheered': false,
-      'lastMessage': '',
-    },
-    {
-      'id': 'ichiro-13',
-      'name': 'やまだ いちろう',
-      'district': '大田区',
-      'steps': 4900,
-      'isOnline': true,
-      'cheered': false,
-      'lastMessage': '',
-    },
-  ];
+  // WalkLogService.sharedFriendsList を参照し、ランキング画面および localStorage と完全連動
+  List<Map<String, dynamic>> get _sharedFriendsList =>
+      WalkLogService.sharedFriendsList;
 
   // フレンド追加ダイアログ（実在する登録アカウントのみ追加可能・未登録はエラーで弾く）
   void _showAddFriendDialog() {
@@ -157,6 +130,7 @@ class _FriendScreenState extends State<FriendScreen> {
               setState(() {
                 _sharedFriendsList.insert(0, newFriend);
               });
+              WalkLogService.persistToLocalStorage();
 
               try {
                 await FirebaseFirestore.instance
@@ -324,6 +298,7 @@ class _FriendScreenState extends State<FriendScreen> {
         _sharedFriendsList[index]['cheered'] = true;
         _sharedFriendsList[index]['lastMessage'] = message;
       });
+      WalkLogService.persistToLocalStorage();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

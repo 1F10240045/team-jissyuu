@@ -55,21 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<WardRanking> _buildFallbackTopWards() {
-    final list = <WardRanking>[];
-    for (var i = 0; i < initialDistrictRankings.length && i < 3; i++) {
-      final item = initialDistrictRankings[i] as Map<String, dynamic>;
-      list.add(
-        WardRanking(
-          rank: i + 1,
-          district: item['district'] as String,
-          achievementRate: (item['achievementRate'] as num).toDouble(),
-          totalSteps: (item['totalSteps'] as num).toInt(),
-          totalDistanceKm: (item['totalDistanceKm'] as num).toDouble(),
-          participantCount: 10,
-        ),
-      );
-    }
-    return list;
+    return WalkLogService.computeRealtimeWardRankings().take(3).toList();
   }
 
   Future<void> _refreshHomeData() async {
@@ -78,6 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _targetSteps = WalkLogService.currentTargetSteps;
       _userDistrict = WalkLogService.currentUserDistrict;
       _userName = WalkLogService.currentUserName;
+      _topWards = _buildFallbackTopWards();
       _isLoadingRanking = true;
     });
 

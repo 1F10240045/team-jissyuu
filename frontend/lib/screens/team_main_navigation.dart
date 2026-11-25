@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../constants/dummy_data.dart';
 import '../models/team.dart';
 import '../services/team_service.dart';
+import '../services/walk_log_service.dart';
+import '../theme/app_theme.dart';
 import 'create_team_screen.dart';
 import 'team_detail_screen.dart';
 import 'team_list_screen.dart';
@@ -16,27 +17,6 @@ class TeamMainNavigation extends StatefulWidget {
 
 class _TeamMainNavigationState extends State<TeamMainNavigation> {
   final TeamService _teamService = TeamService();
-  List<Team> _teams = List.from(initialTeams);
-
-  @override
-  void initState() {
-    super.initState();
-    _loadTeams();
-  }
-
-  Future<void> _loadTeams() async {
-    try {
-      final fetched = await _teamService
-          .fetchTeams()
-          .timeout(const Duration(seconds: 3));
-      if (!mounted) return;
-      setState(() {
-        _teams = fetched;
-      });
-    } catch (_) {
-      // エミュレータ未接続時は初期ダミーデータを維持
-    }
-  }
 
   Future<void> _addTeam(
     String name,
@@ -44,22 +24,57 @@ class _TeamMainNavigationState extends State<TeamMainNavigation> {
     String description,
   ) async {
     final now = DateTime.now();
+    final newTeamId = 'team_${now.millisecondsSinceEpoch}';
+
+    // 自分が以前参加していたチームがあれば人数を-1調整
+    final prevTeamId = WalkLogService.currentTeamId;
+    final mySteps = WalkLogService.currentTodaySteps;
+    if (prevTeamId.isNotEmpty) {
+      final prevIdx = WalkLogService.sharedTeamsList.indexWhere(
+        (t) => t.teamId == prevTeamId,
+      );
+      if (prevIdx >= 0) {
+        final prev = WalkLogService.sharedTeamsList[prevIdx];
+        WalkLogService.sharedTeamsList[prevIdx] = Team(
+          teamId: prev.teamId,
+          name: prev.name,
+          district: prev.district,
+          description: prev.description,
+          managerUserId: prev.managerUserId,
+          memberCount: (prev.memberCount - 1).clamp(1, 9999),
+          totalSteps: (prev.totalSteps - mySteps).clamp(0, 999999999),
+          createdAt: prev.createdAt,
+          updatedAt: now,
+        );
+      }
+    }
 
     final newTeam = Team(
-      teamId: 'team_${now.millisecondsSinceEpoch}',
+      teamId: newTeamId,
       name: name,
       district: district,
       description: description,
-      managerUserId: dummyUserId,
+      managerUserId: WalkLogService.currentAccountId,
       memberCount: 1,
-      totalSteps: 0,
+      totalSteps: mySteps,
       createdAt: now,
       updatedAt: now,
     );
 
     setState(() {
-      _teams.insert(0, newTeam);
+      WalkLogService.sharedTeamsList.insert(0, newTeam);
+      WalkLogService.currentTeamId = newTeamId;
     });
+    WalkLogService.persistToLocalStorage();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ チーム「$name（$district）」を作成して参加しました！'),
+          backgroundColor: AppTheme.primaryColor,
+        ),
+      );
+    }
 
     try {
       await _teamService
@@ -68,25 +83,27 @@ class _TeamMainNavigationState extends State<TeamMainNavigation> {
             district: district,
             description: description,
           )
-          .timeout(const Duration(seconds: 3));
-    } catch (_) {
-      // エミュレータ未接続時も画面上のリストには追加済み
-    }
+          .timeout(const Duration(seconds: 2));
+    } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
     return TeamListScreen(
-      teams: _teams,
-      onSelectTeam: (team) {
-        Navigator.of(context).push(
+      teams: WalkLogService.sharedTeamsList,
+      onSelectTeam: (team) async {
+        await Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => TeamDetailScreen(
               team: team,
-              currentUserId: dummyUserId,
+              currentUserId: WalkLogService.currentAccountId,
+              onTeamUpdated: () {
+                if (mounted) setState(() {});
+              },
             ),
           ),
         );
+        if (mounted) setState(() {});
       },
       onCreateNew: () {
         Navigator.of(context).push(

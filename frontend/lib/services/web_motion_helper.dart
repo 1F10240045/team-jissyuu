@@ -10,4 +10,11 @@ class WebMotionHelper {
 
   /// 歩行中のみ加算されたGPS実測移動距離（メートル）を取得
   static double getGpsDistanceMeters() => getWebGpsDistanceMetersImpl();
+
+  /// スマホのブラウザ(localStorage)にデータを自動保存
+  static void saveLocalData(String key, String value) =>
+      saveLocalDataImpl(key, value);
+
+  /// スマホのブラウザ(localStorage)からデータを自動読み込み
+  static String loadLocalData(String key) => loadLocalDataImpl(key);
 }

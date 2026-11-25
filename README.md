@@ -2,11 +2,12 @@
 
 <div align="center">
 
-**🚶 歩くこと を、地域を繋ぐエンターテインメントへ**
+**🚶 「歩くこと」を、地域を繋ぐエンターテインメントへ**
 
-![Project Status](https://img.shields.io/badge/status-development-blue)
+![Project Status](https://img.shields.io/badge/status-completed-brightgreen)
 ![Team](https://img.shields.io/badge/team-Group%209%20Team%205-green)
-![License](https://img.shields.io/badge/license-MIT-blue)
+![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter)
+![Firebase](https://img.shields.io/badge/Firebase-Firestore%20%2F%20Auth-FFCA28?logo=firebase)
 
 </div>
 
@@ -15,361 +16,150 @@
 ## 📋 プロジェクト概要
 
 ### VISION
-超高齢社会における**健康寿命の延伸**と**社会的孤立の解消**を目指し、シニア層が「歩くこと」を通じて地域コミュニティとつながる LINEミニアプリです。
+超高齢社会における**健康寿命の延伸**と**社会的孤立の解消**を目指し、シニア層が「歩くこと」を通じて地域コミュニティとつながる健康増進アプリケーションです。
 
-東京都23区対抗の競技形式で、ご近所の仲間と一緒に健康増進に取り組みます。
+東京都23区対抗の競技形式（目標達成率％・累計距離）で、ご近所の仲間と一緒に楽しくウォーキングを継続できます。
 
-### 🎯 主な特徴
+### 🎯 3つの強みと学術的アプローチ
 
-- **📱 LINEで楽々スタート**
-  - ダウンロード・登録不要、LINEミニアプリで完結
-  - シニア層の利用ハードルを最小化
-
-- **👥 ご近所チームで継続**
-  - 町内会や馴染みの仲間とチーム化
-  - 「みんなのために」という前向きな義務感を創出
-
-- **⚡ 速さを測って健康に**
-  - スマホセンサーで「歩く速さ」を測定
-  - ロコモ予防（寝たきり予防）をサポート
+1. **📱 面倒な登録なしで楽々スタート（気楽さの担保・脱落防止）**
+   - LINE公式アカウントからのワンタップ起動や、パスワード不要の自動ログイン（Firebase 匿名認証）に対応
+   - 所属する「区」と「年代」を選ぶだけで即座にスタートでき、歩数はOS標準センサー連携で自動計測・自動保存
+2. **👥 ご近所チームと公平な23区対抗ランキング（公平なグループ運営）**
+   - 単純な合計歩数だけでなく「目標達成率（%）」によるスコアリングを導入し、人口規模に左右されない公平な競技性を実現
+   - 町内会や馴染みの仲間とチームを組み、応援メッセージ（スタンプ/定型文）を送り合うことで「前向きな義務感」を創出
+3. **⚡ 歩く速さ・同年代比較と行動経済学ナッジ（ピア・ベンチマーク＆ナッジ理論）**
+   - ロコモ予防に重要な「歩く速さ（分速 m/分）」「距離」「消費カロリー」を自動算出
+   - 「同年代（60代・70代・80代等）の平均歩数」との比較グラフや、「損失回避・利他性」を刺激する応援ナッジバナーを表示
 
 ---
 
-## 👥 チーム体制
+## 👥 チーム体制（Group 9 Team 5）
 
-| 職務 | メンバー | 主な責務 |
-|------|---------|--------|
-| **PM 兼 進行管理** | 広瀬 龍征 | 全体進捗管理・意思決定 |
-| **PO 兼 企画・UI/UXデザイン** | 郷原 拓海 | 機能設計・デザイン・優先度付け |
-| **フロントエンド 兼 実装リード** | 西川 裕貴 | Flutter アプリ開発・UI実装 |
-| **バックエンド / インフラ** | 赤塚 蔵人 | Firebase・API・データベース |
+| 職務 | メンバー | 学籍番号 | 主な担当領域 |
+|------|---------|----------|--------------|
+| **PM 兼 進行管理** | 廣瀬 龍征 | 1F10240259 | 進行管理・プロフィール設定・匿名認証・23区初期シードデータ構築 |
+| **PO 兼 企画・UI/UXデザイン** | 郷原 拓海 | 1F10240168 | 機能設計・記録画面（同年代比較）・ランキング画面・フレンド画面UI |
+| **フロントエンド 兼 実装リード** | 西川 裕貴 | 1F10240045 | Issue管理・全体統合・運動画面（歩数センサー＆自動保存）・ホーム画面リアルタイム連携 |
+| **バックエンド / インフラ** | 赤塚 蔵人 | 1F10240270 | Firestoreスキーマ設計・23区対抗ランキング集計ロジック・チーム機能DB連携 |
+
+---
+
+## 📱 実装済み機能一覧
+
+- [x] **ホーム画面 (`HomeScreen`)**
+  - 23区対抗ランキング トップ3表彰台表示
+  - 本日の歩数・距離・目標達成率リアルタイムプログレスバー
+  - 行動経済学ナッジ理論に基づく応援メッセージバナー（損失回避・利他性・同年代比較）
+- [x] **運動・歩数計測画面 (`ExerciseScreen`)**
+  - スマホ標準歩数センサー（`pedometer`）によるリアルタイム歩数計測＋デモ用歩数加算ツール（+100歩 / +1,000歩）
+  - 歩行距離（km）・消費カロリー（kcal）・歩く速さ（m/分）の自動算出
+  - 歩数変化を検知して Firestore へ非同期保存する自動保存ロジック
+- [x] **歩行記録・同年代比較画面 (`RecordScreen`)**
+  - 同年代（50代〜90代+）の平均歩数と自分の本日歩数を比較するピア・ベンチマークグラフ
+  - 本日および過去の日次ウォーキング履歴カード一覧
+- [x] **ランキング画面 (`RankingScreen`)**
+  - 「23区対抗ランキング」タブ（上位3区の表彰台＋全23区の目標達成率％・累計歩数・距離・参加人数一覧、自区のハイライト）
+  - 「フレンド・メンバー」タブ（歩数に応じたリアルタイム順位変動＋自分の現在順位の下部固定バー）
+- [x] **フレンド・応援画面 (`FriendScreen`)**
+  - フレンド一覧表示および新規フレンド検索・追加機能
+  - ワンタップ定型文＆自由入力による「応援メッセージ」送信機能
+- [x] **ご近所チーム機能 (`TeamMainNavigation` / `TeamListScreen` / `CreateTeamScreen` / `TeamDetailScreen`)**
+  - 地域チームの一覧閲覧・新規チーム作成・チーム詳細確認および「チームに参加する」機能（Firestore 連携）
+- [x] **プロフィール設定＆デモ初期データ投入 (`ProfileScreen` / `SeedService`)**
+  - ニックネーム・所属区（東京都23区）・年代・1日の目標歩数の設定
+  - デモ・発表会用の23区＆サンプルシニアユーザー初期データ一括投入機能
 
 ---
 
 ## 🏗 プロジェクト構成
 
-```
+```text
 team-jissyuu/
-├── README.md                           # このファイル
-├── docs/                               # 技術ドキュメント
-│   ├── PROJECT_PLAN.md                 # プロジェクト計画書
-│   ├── TECHNICAL_SPEC.md               # 技術仕様書
-│   ├── API_DESIGN.md                   # API設計書
-│   └── DATABASE_SCHEMA.md              # Firestore スキーマ設計
-│
-├── frontend/                           # Flutter アプリケーション
+├── README.md                                   # プロジェクト説明書
+├── frontend/                                   # Flutter アプリケーション
 │   ├── lib/
-│   │   ├── main.dart                   # エントリポイント
-│   │   ├── screens/                    # ページ（ホーム、ランキング等）
-│   │   ├── widgets/                    # 再利用可能なUIコンポーネント
-│   │   ├── services/                   # API・センサー連携
-│   │   ├── models/                     # データモデル
-│   │   └── utils/                      # ユーティリティ関数
-│   ├── pubspec.yaml                    # Flutter 依存関係
-│   └── test/                           # ユニットテスト
+│   │   ├── main.dart                           # エントリポイント・Firebase初期化
+│   │   ├── constants/
+│   │   │   └── dummy_data.dart                 # 23区初期ランキング・年代別平均歩数・初期データ定義
+│   │   ├── models/
+│   │   │   ├── team.dart                       # UserProfile / Team データモデル
+│   │   │   └── walk_log.dart                   # WalkLog モデル（距離・カロリー・歩行速度計算）
+│   │   ├── screens/
+│   │   │   ├── home_screen.dart                # ホーム画面（表彰台・歩数ゲージ・ナッジバナー）
+│   │   │   ├── exercise_screen.dart            # 運動・歩数自動計測＆自動保存画面
+│   │   │   ├── record_screen.dart              # 歩行記録・同年代平均比較（ピア・ベンチマーク）画面
+│   │   │   ├── ranking_screen.dart             # 23区対抗＆メンバーランキング画面
+│   │   │   ├── friend_screen.dart              # フレンド一覧・追加・応援メッセージ画面
+│   │   │   ├── team_main_navigation.dart       # チーム機能ナビゲーション管理
+│   │   │   ├── team_list_screen.dart           # チーム一覧画面
+│   │   │   ├── create_team_screen.dart         # チーム新規作成画面
+│   │   │   ├── team_detail_screen.dart         # チーム詳細・参加画面
+│   │   │   └── profile_screen.dart             # プロフィール設定（所属23区・年代・目標歩数）画面
+│   │   ├── services/
+│   │   │   ├── auth_service.dart               # Firebase 匿名ログイン管理
+│   │   │   ├── walk_log_service.dart           # 歩数センサー取得・Firestore保存・状態共有
+│   │   │   ├── ranking_service.dart            # 23区対抗達成率＆メンバー順位集計サービス
+│   │   │   ├── team_service.dart               # チーム作成・参加 Firestore トランザクション処理
+│   │   │   └── seed_service.dart               # デモ用初期データ一括投入サービス
+│   │   ├── theme/
+│   │   │   └── app_theme.dart                  # シニア向け高視認性テーマ（LINEグリーン基調）
+│   │   └── widgets/
+│   │       └── custom_button.dart              # 共通ボタンコンポーネント
+│   └── pubspec.yaml                            # Flutter パッケージ定義
 │
-├── backend/                            # Firebase + Python
-│   ├── functions/                      # Cloud Functions (Node.js)
-│   │   ├── index.js                    # エントリポイント
-│   │   ├── auth.js                     # LINE連携・認証
-│   │   ├── walking-api.js              # 歩数データ取得・保存
-│   │   ├── ranking-api.js              # ランキング計算
-│   │   └── package.json
-│   ├── scripts/                        # Python スクリプト
-│   │   ├── scoring_algorithm.py        # スコアリング数理モデル
-│   │   ├── push_notification.py        # プッシュ通知（MAB）
-│   │   ├── data_export.py              # 分析用データ
-│   │   └── requirements.txt
-│   ├── firestore.rules                 # Firestore セキュリティルール
-│   ├── firebase.json                   # Firebase 設定
-│   └── .env.example                    # 環境変数テンプレート
-│
-├── .github/
-│   ├── workflows/
-│   │   ├── test.yml                    # テスト実行パイプライン
-│   │   └── deploy.yml                  # デプロイパイプライン
-│   └── ISSUE_TEMPLATE/
-│       ├── bug_report.md               # バグレポートテンプレート
-│       └── feature_request.md          # 機能リクエストテンプレート
-│
-└── .gitignore                          # Git除外ファイル
-
+└── backend/                                    # Firebase バックエンド設定・スキーマ定義
+    ├── functions/
+    │   └── src/
+    │       ├── FirestoreSchema.ts              # Firestore コレクション・型定義
+    │       └── index.ts                        # Cloud Functions エントリポイント
+    └── firebase.json                           # Firebase Emulator 設定
 ```
 
 ---
 
-## 🚀 クイックスタート
+## 🚀 起動・動作確認手順（クイックスタート）
 
-### 前提条件
+### 1. フロントエンド（Flutter アプリ）の起動
 
-- **Node.js**: v18.0.0 以上
-- **Python**: 3.9 以上
-- **Flutter**: 3.0 以上
-- **Firebase CLI**: 最新版
-- **Git**: v2.30 以上
-
-### セットアップ手順
-
-#### 1️⃣ リポジトリのクローン
-
-```bash
-git clone https://github.com/1F10240045/team-jissyuu.git
-cd team-jissyuu
-```
-
-#### 2️⃣ フロントエンド（Flutter）のセットアップ
+Firebase エミュレータを起動していない状態でも、内蔵シードデータとローカル状態キャッシュへの自動フォールバックにより、**コマンド1つですぐに全画面・全機能のデモ動作が可能**です。
 
 ```bash
 cd frontend
 
-# 依存パッケージをインストール
+# 依存パッケージの取得
 flutter pub get
 
-# iOS の依存関係を解決（Mac環境の場合）
-cd ios
-pod install
-cd ..
+# Chrome（Webブラウザ）で起動する場合
+flutter run -d chrome
 
-# アプリを実行（エミュレータまたは実機接続時）
+# Android エミュレータ / 実機で起動する場合
 flutter run
 ```
 
-#### 3️⃣ バックエンド（Firebase Functions）のセットアップ
-
-```bash
-cd backend/functions
-
-# Node.js 依存関係をインストール
-npm install
-
-# ローカルで Firebase エミュレータを起動
-firebase emulators:start
-
-# 別ターミナルでテスト実行
-npm test
-```
-
-#### 4️⃣ Python スクリプト環境のセットアップ
-
-```bash
-cd backend/scripts
-
-# 仮想環境を作成
-python3 -m venv venv
-source venv/bin/activate  # Linux/Mac
-# または
-venv\Scripts\activate  # Windows
-
-# 依存パッケージをインストール
-pip install -r requirements.txt
-
-# スコアリングアルゴリズムのテスト
-python3 -m pytest ../tests/
-```
-
-#### 5️⃣ 環境変数の設定
+### 2. ローカル Firebase エミュレータと連携して起動する場合（任意）
 
 ```bash
 cd backend
-
-# .env.example をコピーして .env を作成
-cp .env.example .env
-
-# .env ファイルを編集して必要な値を設定
-# - Firebase API キー
-# - LINE Messaging API チャネルID・シークレット
-# - その他認証情報
+firebase emulators:start
 ```
+- Firestore Emulator UI: `http://localhost:4000/firestore`
+- アプリ内の「プロフ設定」画面下部にある **「初期データ投入（デモ用）」** ボタンを押すと、Firestore エミュレータへ23区およびサンプルシニアデータが自動投入されます。
 
 ---
 
-## 📱 主要機能
+## 🎓 参考文献・学術的根拠
 
-### 現在開発中の機能
-
-- [ ] **ホーム画面** - 日次歩数表示・目標進捗
-- [ ] **ランキング表示**
-  - 23区対抗ランキング
-  - フレンドチーム別ランキング
-  - 個人の過去データ比較グラフ
-- [ ] **フレンド機能** - チームメンバー管理・チャット
-- [ ] **マップ表示** - 歩行ルート可視化
-- [ ] **プッシュ通知** - 適応型ナッジ配信
-- [ ] **LINE ミニアプリ連携** - ダウンロード不要での利用
-
----
-
-## 🛠 開発ワークフロー
-
-### ブランチ戦略
-
-```
-main (本番環境)
-  ↑
-  ├─ develop (開発環境)
-  │   ↑
-  │   ├─ feature/***  (新機能開発)
-  │   ├─ bugfix/***   (バグ修正)
-  │   └─ refactor/*** (リファクタリング)
-```
-
-### 新機能追加の流れ
-
-1. **ブランチ作成**
-   ```bash
-   git checkout develop
-   git pull origin develop
-   git checkout -b feature/your-feature-name
-   ```
-
-2. **コード実装・テスト**
-   ```bash
-   # コード作成
-   # テスト実行
-   flutter test          # Flutter テスト
-   npm test              # Firebase Functions テスト
-   pytest backend/tests  # Python テスト
-   ```
-
-3. **コミット・プッシュ**
-   ```bash
-   git add .
-   git commit -m "feat: 機能説明"
-   git push origin feature/your-feature-name
-   ```
-
-4. **Pull Request 作成**
-   - GitHub で PR を作成（develop へのマージを指定）
-   - コードレビュー依頼（PO・リード確認）
-   - レビュー対応 → マージ
-
-5. **デプロイ**
-   ```bash
-   git checkout main
-   git pull origin develop
-   git push origin main
-   # CI/CD が自動実行 → 本番環境にデプロイ
-   ```
-
----
-
-## 📊 プロジェクト進捗
-
-### 実装フェーズ
-
-- **Phase 1（Week 1-2）**: プロジェクト基盤構築 - `進行中`
-- **Phase 2（Week 2-4）**: 技術基盤構築 - `計画中`
-- **Phase 3（Week 4-6）**: コア機能開発 - `計画中`
-- **Phase 4（Week 6-8）**: UX強化・最適化 - `計画中`
-- **Phase 5（Week 8-10）**: テスト・デプロイ - `計画中`
-- **Phase 6（Week 10+）**: 本格運用 - `計画中`
-
-📌 **進捗状況は [GitHub Projects](https://github.com/1F10240045/team-jissyuu/projects) を参照してください**
-
----
-
-## 🤝 コントリビューション
-
-### やることリスト
-
-各メンバーの初期タスクについては、以下を参照してください：
-
-- **GitHub Issues** - 課題・タスク管理
-- **GitHub Projects** - スプリント・進捗管理
-- **GitHub Discussions** - チーム間の技術討論・意思決定
-
-### コード規約
-
-各言語のコード規約に従ってください：
-
-- **Dart/Flutter** - [Dart Style Guide](https://dart.dev/guides/language/effective-dart/style)
-- **JavaScript** - ESLint ルール準拠
-- **Python** - PEP 8 準拠
-
----
-
-## 📚 技術スタック
-
-| レイヤー | 技術 | 役割 |
-|---------|------|------|
-| **フロントエンド** | Flutter | クロスプラットフォーム モバイルアプリ |
-| **フロントエンド** | LINE SDK | LINEミニアプリ連携 |
-| **バックエンド** | Firebase | リアルタイムDB・認証・ホスティング |
-| **バックエンド** | Cloud Functions | サーバーレス API |
-| **バックエンド** | Python | スコアリング・分析処理 |
-| **センサー連携** | HealthKit (iOS) | iOS歩数・速度計測 |
-| **センサー連携** | Google Fit (Android) | Android歩数・速度計測 |
-| **データベース** | Firestore | NoSQL リアルタイムDB |
-| **CI/CD** | GitHub Actions | 自動テスト・デプロイ |
-
----
-
-## 📖 ドキュメント
-
-詳細な技術仕様については、以下を参照してください：
-
-- [📄 プロジェクト計画書](docs/PROJECT_PLAN.md)
-- [🔧 技術仕様書](docs/TECHNICAL_SPEC.md)
-- [📡 API 設計書](docs/API_DESIGN.md)
-- [🗄️ Firestore スキーマ設計](docs/DATABASE_SCHEMA.md)
-
----
-
-## 🐛 バグ報告・機能リクエスト
-
-### バグを発見した場合
-
-GitHub Issues から [バグレポート](https://github.com/1F10240045/team-jissyuu/issues/new?template=bug_report.md) を作成してください。
-
-**記載項目:**
-- バグの説明
-- 再現手順
-- 期待される動作
-- 実際の動作
-- スクリーンショット（必要に応じて）
-
-### 新機能を提案したい場合
-
-GitHub Issues から [機能リクエスト](https://github.com/1F10240045/team-jissyuu/issues/new?template=feature_request.md) を作成してください。
-
----
-
-## 📞 お問い合わせ・コミュニケーション
-
-- **技術的な質問**: GitHub Discussions
-- **プロジェクト管理**: GitHub Issues・Projects
-- **チーム連携**: Slack（オンサイト時）
-
----
-
-## 📄 ライセンス
-
-このプロジェクトは MIT ライセンスの下で公開されています。
-
-詳細は [LICENSE](LICENSE) をご覧ください。
-
----
-
-## 🎓 参考資料
-
-### 超高齢社会・健康寿命に関する論文
-
-- 山縣 然太朗 (2018): 「閉じこもり傾向層の社会参加促進要因」
-- 北島 尚志 (2018): 「男性シニアの運動習慣継続要因」
-- 重松 良祐 (2011): 「運動継続のためのコミュニティ設計」
-
-### シニアのスマートフォン利用動向
-
-- 総務省統計局: スマートフォン普及率（60代: 95%, 70代: 86%）
-- 内閣府: 「高齢者の幸福度調査」 - 健康状況が最重視される傾向
+1. **山縣 然太朗 (2018)**: 「閉じこもり傾向にある高齢者の教育型プログラム参加につながる要因と継続要因」 — 参加への気持ちの揺らぎ防止と気楽さの担保
+2. **北島 尚志 (2018)**: 「定年退職男性が健康づくりを目的とする地域活動に参加・継続する要因」 — 同世代比較（ピア・ベンチマーク）と論理的納得
+3. **重松 良祐 (2011)**: 「スクエアステップを取り入れた運動教室に参加した高齢者がその後も自主的に運動を継続している理由」 — 仲間同士の会話・応援と公平なグループ運営
+4. **モバイル社会研究所 (2026)** / **日本SPセンター**: シニア層のスマートフォン所有率推移および健康づくりへの関心調査
 
 ---
 
 <div align="center">
 
-**Last Updated**: 2026-10-07  
-**Version**: 0.1.0 (Development)
-
+**Version**: 1.0.0  
 Made with ❤️ by Group 9 Team 5
 
 </div>

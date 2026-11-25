@@ -1,37 +1,118 @@
 import 'package:flutter/material.dart';
 
-class RankingScreen extends StatelessWidget {
+import '../constants/dummy_data.dart';
+import '../models/walk_log.dart';
+import '../services/ranking_service.dart';
+import '../services/walk_log_service.dart';
+
+class RankingScreen extends StatefulWidget {
   const RankingScreen({super.key});
 
   @override
+  State<RankingScreen> createState() => _RankingScreenState();
+}
+
+class _RankingScreenState extends State<RankingScreen> {
+  final RankingService _rankingService = RankingService();
+
+  bool _isLoading = true;
+  List<WardRanking> _wardRankings = [];
+  List<MemberRanking> _memberRankings = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRankings();
+  }
+
+  /// Firestoreまたは初期シードデータ＋現在のユーザーの歩数を統合してランキングを算出
+  Future<void> _loadRankings() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final mySteps = WalkLogService.currentTodaySteps;
+    final myDistrict = WalkLogService.currentUserDistrict;
+    final myName = WalkLogService.currentUserName;
+    final today = DateTime.now();
+
+    List<WardRanking> resolvedWards = [];
+    List<MemberRanking> resolvedMembers = [];
+
+    // 1. Firestoreから取得を試みる（1.2秒でタイムアウトしてグルグル防止）
+    try {
+      final firestoreWards = await _rankingService
+          .getWardRankings(startDate: today, endDate: today)
+          .timeout(const Duration(milliseconds: 1200));
+
+      if (firestoreWards.any((w) => w.totalSteps > 0)) {
+        resolvedWards = firestoreWards;
+      }
+
+      final firestoreMembers = await _rankingService
+          .getMemberRankings(
+            startDate: today,
+            endDate: today,
+            teamId: 'team_001',
+          )
+          .timeout(const Duration(milliseconds: 1200));
+
+      if (firestoreMembers.isNotEmpty) {
+        resolvedMembers = firestoreMembers;
+      }
+    } catch (_) {
+      // エミュレータ未接続時はシードデータ＋本日の自分の歩数を統合
+    }
+
+    // 2. 23区ランキングの構築（ホーム画面の表彰台と完全連動）
+    if (resolvedWards.isEmpty) {
+      resolvedWards = WalkLogService.computeRealtimeWardRankings();
+    }
+
+    // 3. フレンド・メンバーランキングの構築（フレンド画面の友達リスト＋自分の最新歩数を完全連動）
+    if (resolvedMembers.isEmpty) {
+      final tempMembers = <MemberRanking>[
+        for (final friend in WalkLogService.sharedFriendsList)
+          MemberRanking(
+            rank: 0,
+            userId: (friend['id'] ?? '').toString(),
+            name: (friend['name'] ?? '').toString(),
+            district: (friend['district'] ?? '世田谷区').toString(),
+            steps: (friend['steps'] as num?)?.toInt() ?? 0,
+          ),
+        MemberRanking(
+          rank: 0,
+          userId: 'current_user',
+          name: '$myName（あなた）',
+          district: myDistrict,
+          steps: mySteps,
+        ),
+      ];
+
+      tempMembers.sort((a, b) => b.steps.compareTo(a.steps));
+
+      resolvedMembers = [
+        for (var i = 0; i < tempMembers.length; i++)
+          MemberRanking(
+            rank: i + 1,
+            userId: tempMembers[i].userId,
+            name: tempMembers[i].name,
+            district: tempMembers[i].district,
+            steps: tempMembers[i].steps,
+          ),
+      ];
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _wardRankings = resolvedWards;
+      _memberRankings = resolvedMembers;
+      _isLoading = false;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // 1. 23区対抗ランキングデータ
-    final wardRanking = [
-      {'rank': 1, 'name': '千代田区', 'achievement': '128%', 'distance': '1,420km'},
-      {'rank': 2, 'name': '港区', 'achievement': '115%', 'distance': '1,310km'},
-      {'rank': 3, 'name': '新宿区', 'achievement': '108%', 'distance': '1,250km'},
-      {'rank': 4, 'name': '北区（あなたの区）', 'achievement': '98%', 'distance': '1,100km', 'isMyWard': true},
-      {'rank': 5, 'name': '中央区', 'achievement': '95%', 'distance': '1,050km'},
-      {'rank': 6, 'name': '文京区', 'achievement': '91%', 'distance': '980km'},
-      {'rank': 7, 'name': '品川区', 'achievement': '88%', 'distance': '920km'},
-    ];
-
-    // 2. 個人/フレンド内ランキングデータ
-    final memberRanking = [
-      {'rank': 1, 'name': 'たなか さとる', 'ward': '千代田区', 'steps': 8200, 'isMe': false},
-      {'rank': 2, 'name': 'すずき はなこ', 'ward': '港区', 'steps': 7400, 'isMe': false},
-      {'rank': 3, 'name': 'さとう けんじ', 'ward': '北区', 'steps': 6800, 'isMe': false},
-      {'rank': 4, 'name': 'あなた', 'ward': '北区', 'steps': 5200, 'isMe': true},
-      {'rank': 5, 'name': 'やまだ いちろう', 'ward': '新宿区', 'steps': 4900, 'isMe': false},
-      {'rank': 6, 'name': 'わたなべ けいこ', 'ward': '北区', 'steps': 4100, 'isMe': false},
-    ];
-
-    // 自分のデータ（下部固定用）
-    final myData = memberRanking.firstWhere(
-      (element) => element['isMe'] == true,
-      orElse: () => {'rank': 4, 'name': 'あなた', 'ward': '北区', 'steps': 5200, 'isMe': true},
-    );
-
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -45,10 +126,9 @@ class RankingScreen extends StatelessWidget {
           bottom: const TabBar(
             indicatorColor: Colors.white,
             indicatorWeight: 4,
-            labelStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            unselectedLabelStyle: TextStyle(fontSize: 16),
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
+            labelStyle: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
             tabs: [
               Tab(text: '23区対抗'),
               Tab(text: 'フレンド・メンバー'),
@@ -56,39 +136,43 @@ class RankingScreen extends StatelessWidget {
           ),
         ),
         backgroundColor: const Color(0xFFF4F6F9),
-        body: TabBarView(
-          children: [
-            // タブ1: 23区対抗ランキング
-            _buildWardRankingTab(wardRanking),
-
-            // タブ2: フレンド・メンバーランキング
-            _buildMemberRankingTab(memberRanking, myData),
-          ],
-        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : TabBarView(
+                children: [
+                  _buildWardRankingTab(_wardRankings),
+                  _buildMemberRankingTab(_memberRankings),
+                ],
+              ),
       ),
     );
   }
 
-  // --- タブ1: 23区対抗ランキング ---
-  Widget _buildWardRankingTab(List<dynamic> wardList) {
+  Widget _buildWardRankingTab(List<WardRanking> wardList) {
+    if (wardList.isEmpty) {
+      return const Center(child: Text('ランキングデータがありません'));
+    }
+
     return ListView(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16),
       children: [
         _buildPodiumHeader(wardList),
         const SizedBox(height: 20),
         const Text(
-          '全区順位一覧',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+          '全23区 順位一覧',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 10),
-        ...wardList.skip(3).map((ward) => _buildWardTile(ward)),
+        ...wardList.map((ward) => _buildWardTile(ward)),
       ],
     );
   }
 
-  // 1〜3位の表彰台UI
-  Widget _buildPodiumHeader(List<dynamic> wardList) {
-    if (wardList.length < 3) return const SizedBox();
+  Widget _buildPodiumHeader(List<WardRanking> wardList) {
+    if (wardList.length < 3) {
+      return const SizedBox();
+    }
+
     final first = wardList[0];
     final second = wardList[1];
     final third = wardList[2];
@@ -104,16 +188,20 @@ class RankingScreen extends StatelessWidget {
         children: [
           const Text(
             '🏆 23区 トップ3 🏆',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.amber),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.amber,
+            ),
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              _buildPodiumItem(second['name'].toString(), '2位', Colors.grey.shade400, 90),
-              _buildPodiumItem(first['name'].toString(), '1位', Colors.amber, 120),
-              _buildPodiumItem(third['name'].toString(), '3位', Colors.brown.shade300, 75),
+              _buildPodiumItem(second.district, '2位', Colors.grey.shade400, 90),
+              _buildPodiumItem(first.district, '1位', Colors.amber, 120),
+              _buildPodiumItem(third.district, '3位', Colors.brown.shade300, 75),
             ],
           ),
         ],
@@ -121,28 +209,40 @@ class RankingScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPodiumItem(String name, String rankText, Color color, double height) {
+  Widget _buildPodiumItem(
+    String name,
+    String rankText,
+    Color color,
+    double height,
+  ) {
     return Column(
       children: [
         Icon(Icons.emoji_events, color: color, size: height > 100 ? 36 : 28),
         const SizedBox(height: 4),
-        Text(
-          name,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        SizedBox(
+          width: 95,
+          child: Text(
+            name,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+          ),
         ),
         const SizedBox(height: 6),
         Container(
           width: 80,
           height: height,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
+            color: color.withValues(alpha: 0.2),
             border: Border.all(color: color, width: 2),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
           ),
-          child: Center(
-            child: Text(
-              rankText,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color),
+          child: Text(
+            rankText,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: color,
             ),
           ),
         ),
@@ -150,46 +250,70 @@ class RankingScreen extends StatelessWidget {
     );
   }
 
-  // 区のリスト行
-  Widget _buildWardTile(dynamic ward) {
-    final bool isMyWard = ward['isMyWard'] == true;
+  Widget _buildWardTile(WardRanking ward) {
+    final bool isMyWard = ward.district == WalkLogService.currentUserDistrict;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
-      color: isMyWard ? Colors.orange.shade50 : Colors.white,
+      color: isMyWard ? Colors.amber.shade50 : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: isMyWard ? BorderSide(color: Colors.orange.shade400, width: 2) : BorderSide.none,
+        side: isMyWard
+            ? BorderSide(color: Colors.amber.shade700, width: 2)
+            : BorderSide.none,
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Row(
           children: [
             SizedBox(
-              width: 50,
+              width: 52,
               child: Text(
-                '${ward['rank']}位',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                '${ward.rank}位',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isMyWard ? Colors.amber.shade900 : Colors.black87,
+                ),
               ),
             ),
             Expanded(
-              child: Text(
-                ward['name'].toString(),
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: isMyWard ? FontWeight.bold : FontWeight.normal,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isMyWard ? '${ward.district}（あなたの区）' : ward.district,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '参加人数 ${ward.participantCount}人',
+                    style: const TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
+                ],
               ),
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '達成率 ${ward['achievement']}',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+                  '達成率 ${ward.achievementRate.toStringAsFixed(1)}%',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blueAccent,
+                  ),
                 ),
                 Text(
-                  '累計 ${ward['distance']}',
+                  '累計 ${ward.totalSteps}歩',
                   style: const TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+                Text(
+                  '${ward.totalDistanceKm.toStringAsFixed(1)} km',
+                  style: const TextStyle(fontSize: 13, color: Colors.grey),
                 ),
               ],
             ),
@@ -199,38 +323,63 @@ class RankingScreen extends StatelessWidget {
     );
   }
 
-  // --- タブ2: フレンド・メンバーランキング ---
-  Widget _buildMemberRankingTab(List<dynamic> memberList, dynamic myData) {
+  Widget _buildMemberRankingTab(List<MemberRanking> memberList) {
+    if (memberList.isEmpty) {
+      return const Center(child: Text('メンバーが登録されていません'));
+    }
+
+    final myEntry = memberList.firstWhere(
+      (m) => m.userId == 'current_user',
+      orElse: () => MemberRanking(
+        rank: memberList.length,
+        userId: 'current_user',
+        name: WalkLogService.currentUserName,
+        district: WalkLogService.currentUserDistrict,
+        steps: WalkLogService.currentTodaySteps,
+      ),
+    );
+
     return Column(
       children: [
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16),
             itemCount: memberList.length,
             itemBuilder: (context, index) {
-              final user = memberList[index];
-              final bool isMe = user['isMe'] == true;
+              final member = memberList[index];
+              final isMe = member.userId == 'current_user';
+
               return Card(
                 margin: const EdgeInsets.only(bottom: 10),
                 color: isMe ? Colors.lightBlue.shade50 : Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  side: isMe ? BorderSide(color: Colors.blue.shade400, width: 2) : BorderSide.none,
+                  side: isMe
+                      ? BorderSide(color: Colors.blue.shade400, width: 2)
+                      : BorderSide.none,
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
                       SizedBox(
-                        width: 44,
+                        width: 48,
                         child: Text(
-                          '${user['rank']}位',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          '${member.rank}位',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       CircleAvatar(
-                        backgroundColor: isMe ? Colors.blue.shade300 : Colors.grey.shade300,
-                        child: Icon(Icons.person, color: isMe ? Colors.white : Colors.grey.shade700),
+                        backgroundColor: isMe
+                            ? Colors.blue.shade300
+                            : Colors.grey.shade300,
+                        child: Icon(
+                          Icons.person,
+                          color: isMe ? Colors.white : Colors.grey.shade700,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -238,21 +387,26 @@ class RankingScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              user['name'].toString(),
+                              member.name,
                               style: TextStyle(
                                 fontSize: 18,
-                                fontWeight: isMe ? FontWeight.bold : FontWeight.normal,
+                                fontWeight: isMe
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                               ),
                             ),
                             Text(
-                              user['ward'].toString(),
-                              style: const TextStyle(fontSize: 14, color: Colors.grey),
+                              member.district,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
                             ),
                           ],
                         ),
                       ),
                       Text(
-                        '${user['steps']} 歩',
+                        '${member.steps} 歩',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -266,6 +420,7 @@ class RankingScreen extends StatelessWidget {
             },
           ),
         ),
+        // 下部固定バー：自分の現在の順位と歩数
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           color: Colors.blue.shade800,
@@ -275,12 +430,20 @@ class RankingScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'あなたの順位: ${myData['rank']}位 (${myData['ward']})',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                  'あなたの現在順位: ${myEntry.rank}位 (${myEntry.district})',
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
                 Text(
-                  '${myData['steps']} 歩',
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                  '${myEntry.steps} 歩',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ],
             ),

@@ -12,10 +12,10 @@ class FriendScreen extends StatefulWidget {
 }
 
 class _FriendScreenState extends State<FriendScreen> {
-  // 画面を閉じて開き直しても追加したフレンドや応援状態が保持されるように static キャッシュ化
+  // 現在登録済みのフレンドリスト（実在するアカウントIDと紐付け）
   static final List<Map<String, dynamic>> _sharedFriendsList = [
     {
-      'id': 'user_001',
+      'id': 'hanako-11',
       'name': 'すずき はなこ',
       'district': '世田谷区',
       'steps': 7400,
@@ -24,7 +24,7 @@ class _FriendScreenState extends State<FriendScreen> {
       'lastMessage': '',
     },
     {
-      'id': 'user_002',
+      'id': 'satoru-12',
       'name': 'たなか さとる',
       'district': '練馬区',
       'steps': 8200,
@@ -33,7 +33,7 @@ class _FriendScreenState extends State<FriendScreen> {
       'lastMessage': '',
     },
     {
-      'id': 'user_003',
+      'id': 'ichiro-13',
       'name': 'やまだ いちろう',
       'district': '大田区',
       'steps': 4900,
@@ -43,105 +43,271 @@ class _FriendScreenState extends State<FriendScreen> {
     },
   ];
 
-  // フレンド追加ダイアログ
+  // フレンド追加ダイアログ（実在する登録アカウントのみ追加可能・未登録はエラーで弾く）
   void _showAddFriendDialog() {
     final TextEditingController searchController = TextEditingController();
-    String selectedDistrict = WalkLogService.currentUserDistrict;
+    String? errorMessage;
+    bool isSearching = false;
+
+    // まだフレンドに追加していない登録済み実在アカウント候補を抽出
+    List<Map<String, dynamic>> getAvailableCandidates() {
+      final currentMyId = WalkLogService.currentAccountId.toLowerCase();
+      final existingIds = _sharedFriendsList
+          .map((f) => f['id'].toString().toLowerCase())
+          .toSet();
+      final existingNames = _sharedFriendsList
+          .map(
+            (f) => f['name']
+                .toString()
+                .replaceAll(' ', '')
+                .replaceAll('　', '')
+                .toLowerCase(),
+          )
+          .toSet();
+
+      return WalkLogService.registeredAccounts.where((acc) {
+        final id = acc['accountId'].toString().toLowerCase();
+        final name = acc['name']
+            .toString()
+            .replaceAll(' ', '')
+            .replaceAll('　', '')
+            .toLowerCase();
+        return id != currentMyId &&
+            !existingIds.contains(id) &&
+            !existingNames.contains(name);
+      }).toList();
+    }
 
     showDialog(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text(
-            'フレンドを追加する',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'お友達の名前またはユーザーIDを入力してください。',
-                style: TextStyle(fontSize: 16),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final candidates = getAvailableCandidates();
+
+            Future<void> tryAddByQuery(String rawQuery) async {
+              final query = rawQuery.trim();
+              if (query.isEmpty) {
+                setDialogState(() {
+                  errorMessage = 'フレンドIDまたは登録名を入力してください';
+                });
+                return;
+              }
+
+              setDialogState(() {
+                isSearching = true;
+                errorMessage = null;
+              });
+
+              final found = await WalkLogService.findRegisteredAccount(query);
+
+              if (found == null) {
+                setDialogState(() {
+                  isSearching = false;
+                  errorMessage =
+                      '❌ 「$query」に一致する登録済みアカウントは存在しません。\n正しいフレンドIDまたは登録名を入力してください。';
+                });
+                return;
+              }
+
+              final foundId = found['accountId'].toString();
+              final foundName = found['name'].toString();
+
+              // 自分自身のチェック
+              if (foundId.toLowerCase() ==
+                  WalkLogService.currentAccountId.toLowerCase()) {
+                setDialogState(() {
+                  isSearching = false;
+                  errorMessage = '⚠️ あなた自身のアカウントはフレンドに追加できません。';
+                });
+                return;
+              }
+
+              // すでに追加済みかの重複チェック
+              final alreadyAdded = _sharedFriendsList.any(
+                (f) =>
+                    f['id'].toString().toLowerCase() == foundId.toLowerCase() ||
+                    f['name']
+                            .toString()
+                            .replaceAll(' ', '')
+                            .replaceAll('　', '') ==
+                        foundName.replaceAll(' ', '').replaceAll('　', ''),
+              );
+              if (alreadyAdded) {
+                setDialogState(() {
+                  isSearching = false;
+                  errorMessage = '⚠️ 「$foundName（ID: $foundId）」さんはすでにフレンド登録済みです。';
+                });
+                return;
+              }
+
+              final newFriend = <String, dynamic>{
+                'id': foundId,
+                'name': foundName,
+                'district': (found['district'] ?? '渋谷区').toString(),
+                'steps': (found['steps'] as num?)?.toInt() ?? 5200,
+                'isOnline': true,
+                'cheered': false,
+                'lastMessage': '',
+              };
+
+              if (!mounted) return;
+              Navigator.pop(dialogContext);
+
+              setState(() {
+                _sharedFriendsList.insert(0, newFriend);
+              });
+
+              try {
+                await FirebaseFirestore.instance
+                    .collection('friends')
+                    .doc(foundId)
+                    .set({
+                      ...newFriend,
+                      'ownerId': WalkLogService.currentAccountId,
+                      'createdAt': FieldValue.serverTimestamp(),
+                    })
+                    .timeout(const Duration(seconds: 2));
+              } catch (_) {}
+
+              if (mounted) {
+                ScaffoldMessenger.of(this.context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      '✅ 実在アカウント「$foundName（ID: $foundId）」さんをフレンドに追加しました！',
+                      style: const TextStyle(fontSize: 15),
+                    ),
+                    backgroundColor: Colors.teal.shade800,
+                  ),
+                );
+              }
+            }
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: searchController,
-                style: const TextStyle(fontSize: 18),
-                decoration: const InputDecoration(
-                  labelText: 'お名前 / ユーザーID',
-                  hintText: '例: さとう けんいち',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person_search),
+              title: const Text(
+                'フレンドを検索して追加',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '登録済みユーザーの「フレンドID」または「名前」を入力してください（未登録のアカウントは追加できません）。',
+                      style: TextStyle(fontSize: 14, color: Colors.black87),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: searchController,
+                      style: const TextStyle(fontSize: 17),
+                      onChanged: (_) {
+                        if (errorMessage != null) {
+                          setDialogState(() {
+                            errorMessage = null;
+                          });
+                        }
+                      },
+                      decoration: const InputDecoration(
+                        labelText: 'フレンドID / 登録名',
+                        hintText: '例: sato-0001 または 佐藤 健一',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person_search),
+                      ),
+                    ),
+                    if (errorMessage != null) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.red.shade300),
+                        ),
+                        child: Text(
+                          errorMessage!,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red.shade800,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (candidates.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      const Text(
+                        '📌 登録済みのおすすめユーザー（タップで入力）：',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: candidates.take(5).map((acc) {
+                          final id = acc['accountId'].toString();
+                          final name = acc['name'].toString();
+                          return ActionChip(
+                            avatar: const Icon(Icons.person, size: 16),
+                            label: Text(
+                              '$name ($id)',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            onPressed: () {
+                              setDialogState(() {
+                                searchController.text = id;
+                                errorMessage = null;
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('キャンセル', style: TextStyle(fontSize: 16)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal.shade700,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () async {
-                final query = searchController.text.trim();
-                Navigator.pop(dialogContext);
-                if (query.isEmpty) return;
-
-                final newFriend = <String, dynamic>{
-                  'id': 'friend_${DateTime.now().millisecondsSinceEpoch}',
-                  'name': query,
-                  'district': selectedDistrict,
-                  'steps': 5400,
-                  'isOnline': true,
-                  'cheered': false,
-                  'lastMessage': '',
-                };
-
-                setState(() {
-                  _sharedFriendsList.insert(0, newFriend);
-                });
-
-                // Firestore への保存も非同期で試みる（エミュレータ未起動時も画面には即時反映）
-                try {
-                  await FirebaseFirestore.instance
-                      .collection('friends')
-                      .doc(newFriend['id'] as String)
-                      .set({
-                        ...newFriend,
-                        'createdAt': FieldValue.serverTimestamp(),
-                      })
-                      .timeout(const Duration(seconds: 2));
-                } catch (_) {}
-
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        '「$query」さんをフレンドリストに追加しました！',
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                      backgroundColor: Colors.teal.shade800,
-                    ),
-                  );
-                }
-              },
-              child: const Text('追加する', style: TextStyle(fontSize: 16)),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('キャンセル', style: TextStyle(fontSize: 16)),
+                ),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal.shade700,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: isSearching
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.person_add),
+                  label: const Text('検索して追加', style: TextStyle(fontSize: 16)),
+                  onPressed: isSearching
+                      ? null
+                      : () => tryAddByQuery(searchController.text),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
 
-  // 応援スタンプ・メッセージ送信ダイアログ（スライド10枚目のメッセージ機能）
+  // 応援スタンプ・メッセージ送信ダイアログ
   void _showCheerMessageDialog(int index) {
     final friend = _sharedFriendsList[index];
     final friendName = friend['name'].toString();
@@ -278,9 +444,7 @@ class _FriendScreenState extends State<FriendScreen> {
             tooltip: 'チーム一覧を見る',
             onPressed: () {
               Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const TeamMainNavigation(),
-                ),
+                MaterialPageRoute(builder: (_) => const TeamMainNavigation()),
               );
             },
           ),
@@ -297,8 +461,8 @@ class _FriendScreenState extends State<FriendScreen> {
           children: [
             Container(
               width: double.infinity,
-              margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: Colors.teal.shade50,
                 borderRadius: BorderRadius.circular(12),
@@ -306,13 +470,13 @@ class _FriendScreenState extends State<FriendScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.people_alt, color: Colors.teal.shade800, size: 32),
-                  const SizedBox(width: 12),
-                  const Expanded(
+                  Icon(Icons.badge, color: Colors.teal.shade800, size: 28),
+                  const SizedBox(width: 10),
+                  Expanded(
                     child: Text(
-                      'お友達とお互いの歩数を応援し合いましょう！',
-                      style: TextStyle(
-                        fontSize: 16,
+                      'あなたのフレンドID: ${WalkLogService.currentAccountId}\nお友達のIDまたは登録名で検索して追加できます',
+                      style: const TextStyle(
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                       ),
@@ -379,6 +543,7 @@ class _FriendScreenState extends State<FriendScreen> {
     final bool cheered = friend['cheered'] == true;
     final String lastMessage = (friend['lastMessage'] ?? '').toString();
     final String district = (friend['district'] ?? '世田谷区').toString();
+    final String friendId = (friend['id'] ?? '').toString();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -418,7 +583,7 @@ class _FriendScreenState extends State<FriendScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
@@ -438,7 +603,14 @@ class _FriendScreenState extends State<FriendScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      Text(
+                        'ID: $friendId',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
                       Row(
                         children: [
                           Icon(
@@ -460,7 +632,6 @@ class _FriendScreenState extends State<FriendScreen> {
                     ],
                   ),
                 ),
-                // スライド10枚目の「メッセージ💬 / 応援」ボタン
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: cheered

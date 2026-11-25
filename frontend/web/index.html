@@ -151,6 +151,21 @@
       return window._webGpsDistanceMeters || 0.0;
     };
 
+    // 3. スマホのブラウザ本体(localStorage)へのログイン不要・自動保存ブリッジ
+    window.saveAppLocalData = function(key, value) {
+      try {
+        window.localStorage.setItem('walk23_' + key, String(value));
+      } catch (_) {}
+    };
+
+    window.loadAppLocalData = function(key) {
+      try {
+        return window.localStorage.getItem('walk23_' + key) || '';
+      } catch (_) {
+        return '';
+      }
+    };
+
     // 古いService Workerのキャッシュ自動解除
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(registrations) {

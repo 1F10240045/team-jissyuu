@@ -116,6 +116,7 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
               WalkLogService.currentTodaySteps = _steps;
               WalkLogService.currentGpsDistanceMeters = gpsMeters;
             });
+            WalkLogService.persistToLocalStorage();
             _scheduleAutoSave();
           }
         },
@@ -148,6 +149,7 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
       WalkLogService.currentTodaySteps = _steps;
       _status = 'テストデータ（+$amount歩）適用中';
     });
+    WalkLogService.persistToLocalStorage();
     _scheduleAutoSave();
   }
 

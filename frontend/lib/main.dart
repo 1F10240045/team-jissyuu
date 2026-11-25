@@ -5,10 +5,21 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'screens/home_screen.dart';
+import 'services/walk_log_service.dart';
+import 'services/web_motion_helper.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // スマホ本体（ブラウザのlocalStorage）から前回の続き（ID・名前・区・歩数・文字サイズ）を自動復元
+  WalkLogService.initFromLocalStorage();
+  final savedScale = double.tryParse(
+    WebMotionHelper.loadLocalData('fontScale'),
+  );
+  if (savedScale != null && savedScale >= 1.0 && savedScale <= 1.4) {
+    MyApp.fontScaleNotifier.value = savedScale;
+  }
 
   // Firebase の初期化（Web/ローカル開発用のダミー設定）
   await Firebase.initializeApp(
@@ -34,7 +45,7 @@ class MyApp extends StatelessWidget {
 
   /// シニア向け文字サイズ倍率（1.0: 標準, 1.15: 大, 1.3: 特大）
   static final ValueNotifier<double> fontScaleNotifier =
-      ValueNotifier<double>(1.15); // デフォルトでシニアに見やすい「大(1.15倍)」に設定
+      ValueNotifier<double>(1.15);
 
   static String get fontScaleLabel {
     final s = fontScaleNotifier.value;
@@ -52,6 +63,10 @@ class MyApp extends StatelessWidget {
     } else {
       fontScaleNotifier.value = 1.0; // 標準
     }
+    WebMotionHelper.saveLocalData(
+      'fontScale',
+      fontScaleNotifier.value.toString(),
+    );
   }
 
   @override

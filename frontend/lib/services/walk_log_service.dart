@@ -1,37 +1,119 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../constants/dummy_data.dart';
 import '../models/walk_log.dart';
+import 'web_motion_helper.dart';
 
 class WalkLogService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // アプリ内で共有する本日の最新歩数とログイン中アカウント情報
-  static String currentAccountId = 'walk-1024'; // フレンド検索用のアカウントID
+  // アプリ内で共有する本日の最新歩数とプロフィール情報（localStorageに自動保存・自動復元）
+  static String currentAccountId = 'walk-1024';
   static int currentTodaySteps = 0;
   static String currentUserName = dummyUserProfile.displayName;
   static String currentUserDistrict = dummyUserProfile.district;
   static String currentUserAgeGroup = '70代';
   static int currentTargetSteps = dummyUserProfile.targetSteps;
-  static double? currentUserHeightCm; // 任意入力の身長(cm)
-  static double currentGpsDistanceMeters = 0.0; // 歩行中のみ加算されるGPS実測距離(m)
+  static double? currentUserHeightCm;
+  static double currentGpsDistanceMeters = 0.0;
+  static bool _initializedFromStorage = false;
+
+  /// アプリ起動時にスマホ本体（ブラウザのlocalStorage）から前回の状態を自動復元
+  /// 初回起動時はそのスマホ専用のフレンドID（walk-XXXX）を自動発行して記憶する
+  static void initFromLocalStorage() {
+    if (_initializedFromStorage) return;
+    _initializedFromStorage = true;
+
+    String savedId = WebMotionHelper.loadLocalData('accountId');
+    if (savedId.isEmpty) {
+      final randCode = 1000 + Random().nextInt(9000);
+      savedId = 'walk-$randCode';
+      WebMotionHelper.saveLocalData('accountId', savedId);
+    }
+    currentAccountId = savedId;
+
+    final savedName = WebMotionHelper.loadLocalData('userName');
+    if (savedName.isNotEmpty) currentUserName = savedName;
+
+    final savedDistrict = WebMotionHelper.loadLocalData('userDistrict');
+    if (savedDistrict.isNotEmpty) currentUserDistrict = savedDistrict;
+
+    final savedAge = WebMotionHelper.loadLocalData('userAgeGroup');
+    if (savedAge.isNotEmpty) currentUserAgeGroup = savedAge;
+
+    final savedTarget = int.tryParse(
+      WebMotionHelper.loadLocalData('targetSteps'),
+    );
+    if (savedTarget != null && savedTarget > 0) {
+      currentTargetSteps = savedTarget;
+    }
+
+    final savedHeight = double.tryParse(
+      WebMotionHelper.loadLocalData('heightCm'),
+    );
+    if (savedHeight != null && savedHeight >= 100 && savedHeight <= 220) {
+      currentUserHeightCm = savedHeight;
+    }
+
+    final savedSteps = int.tryParse(
+      WebMotionHelper.loadLocalData('todaySteps'),
+    );
+    if (savedSteps != null && savedSteps >= 0) {
+      currentTodaySteps = savedSteps;
+    }
+
+    final savedGps = double.tryParse(
+      WebMotionHelper.loadLocalData('gpsMeters'),
+    );
+    if (savedGps != null && savedGps >= 0) {
+      currentGpsDistanceMeters = savedGps;
+    }
+
+    upsertRegisteredAccount({
+      'accountId': currentAccountId,
+      'name': currentUserName,
+      'district': currentUserDistrict,
+      'ageGroup': currentUserAgeGroup,
+      'targetSteps': currentTargetSteps,
+      'heightCm': currentUserHeightCm,
+      'steps': currentTodaySteps,
+    });
+  }
+
+  /// 現在のプロフィール・歩数状態をスマホ本体（localStorage）へ即座に自動保存
+  static void persistToLocalStorage() {
+    WebMotionHelper.saveLocalData('accountId', currentAccountId);
+    WebMotionHelper.saveLocalData('userName', currentUserName);
+    WebMotionHelper.saveLocalData('userDistrict', currentUserDistrict);
+    WebMotionHelper.saveLocalData('userAgeGroup', currentUserAgeGroup);
+    WebMotionHelper.saveLocalData('targetSteps', currentTargetSteps.toString());
+    WebMotionHelper.saveLocalData(
+      'heightCm',
+      currentUserHeightCm != null ? currentUserHeightCm.toString() : '',
+    );
+    WebMotionHelper.saveLocalData('todaySteps', currentTodaySteps.toString());
+    WebMotionHelper.saveLocalData(
+      'gpsMeters',
+      currentGpsDistanceMeters.toString(),
+    );
+
+    upsertRegisteredAccount({
+      'accountId': currentAccountId,
+      'name': currentUserName,
+      'district': currentUserDistrict,
+      'ageGroup': currentUserAgeGroup,
+      'targetSteps': currentTargetSteps,
+      'heightCm': currentUserHeightCm,
+      'steps': currentTodaySteps,
+    });
+  }
 
   /// システムに登録されている実在ユーザーアカウント台帳
-  /// （ここに存在しないIDや名前はフレンド追加で弾かれる）
   static final List<Map<String, dynamic>> registeredAccounts = [
-    {
-      'accountId': 'walk-1024',
-      'name': 'テストユーザー',
-      'district': '渋谷区',
-      'ageGroup': '70代',
-      'targetSteps': 8000,
-      'heightCm': null,
-      'steps': 0,
-    },
     {
       'accountId': 'sato-0001',
       'name': '佐藤 健一',
@@ -106,8 +188,7 @@ class WalkLogService {
     },
   ];
 
-  /// アカウントIDまたは名前（完全一致・空白無視一致）で実在する登録済みアカウントを検索
-  /// 存在しない場合は null を返す
+  /// アカウントIDまたは名前で実在する登録済みアカウントを検索（存在しない場合は null）
   static Future<Map<String, dynamic>?> findRegisteredAccount(
     String query,
   ) async {
@@ -115,7 +196,6 @@ class WalkLogService {
     if (normalized.isEmpty) return null;
     final noSpaceQuery = normalized.replaceAll(' ', '').toLowerCase();
 
-    // 1. Firestore の users コレクションから実在アカウントを検索（接続時）
     try {
       final snap = await FirebaseFirestore.instance
           .collection('users')
@@ -143,7 +223,6 @@ class WalkLogService {
       }
     } catch (_) {}
 
-    // 2. ローカルの登録済みアカウント台帳から検索
     for (final acc in registeredAccounts) {
       final id = (acc['accountId'] ?? '').toString().toLowerCase();
       final name = (acc['name'] ?? '')
@@ -159,7 +238,6 @@ class WalkLogService {
     return null;
   }
 
-  /// アカウント台帳へ新規追加または更新する
   static void upsertRegisteredAccount(Map<String, dynamic> account) {
     final id = account['accountId'].toString();
     final idx = registeredAccounts.indexWhere(
@@ -170,17 +248,6 @@ class WalkLogService {
     } else {
       registeredAccounts.insert(0, account);
     }
-  }
-
-  /// 指定したアカウントに切り替えてログインする
-  static void switchActiveAccount(Map<String, dynamic> account) {
-    currentAccountId = (account['accountId'] ?? 'walk-1024').toString();
-    currentUserName = (account['name'] ?? 'テストユーザー').toString();
-    currentUserDistrict = (account['district'] ?? '渋谷区').toString();
-    currentUserAgeGroup = (account['ageGroup'] ?? '70代').toString();
-    currentTargetSteps = (account['targetSteps'] as num?)?.toInt() ?? 8000;
-    currentUserHeightCm = (account['heightCm'] as num?)?.toDouble();
-    currentTodaySteps = (account['steps'] as num?)?.toInt() ?? 0;
   }
 
   // 歩数ストリームの取得
@@ -201,10 +268,8 @@ class WalkLogService {
     }
   }
 
-  /// 現在ログイン中のユーザーID
   String get currentUserId => currentAccountId;
 
-  /// 今日の日付文字列（YYYY-MM-DD）を取得
   String getTodayDateString() {
     final now = DateTime.now();
     final y = now.year.toString().padLeft(4, '0');
@@ -213,22 +278,14 @@ class WalkLogService {
     return '$y-$m-$d';
   }
 
-  /// 歩数ログを Firestore の `walkLogs` コレクションおよび `users` ドキュメントへ直接保存
+  /// 歩数ログをスマホ本体（localStorage）と Firestore の両方へ自動保存
   Future<WalkLog> saveWalkLog({
     required int steps,
     int? actualSeconds,
     String? district,
   }) async {
     currentTodaySteps = steps;
-    upsertRegisteredAccount({
-      'accountId': currentAccountId,
-      'name': currentUserName,
-      'district': currentUserDistrict,
-      'ageGroup': currentUserAgeGroup,
-      'targetSteps': currentTargetSteps,
-      'heightCm': currentUserHeightCm,
-      'steps': steps,
-    });
+    persistToLocalStorage();
 
     final userId = currentUserId;
     final dateStr = getTodayDateString();
